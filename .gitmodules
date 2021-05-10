@@ -1,0 +1,3 @@
+[submodule "raccoon-ecs"]
+	path = raccoon-ecs
+	url = git@github.com:gameraccoon/raccoon-ecs.git

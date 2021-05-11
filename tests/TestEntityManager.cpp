@@ -24,14 +24,14 @@ namespace ComponentTests
 	{
 		TestVector2 pos;
 
-		static ComponentType GetTypeName() { return TransformComponentId; };
+		static ComponentType GetTypeId() { return TransformComponentId; };
 	};
 
 	struct MovementComponent
 	{
 		TestVector2 move;
 
-		static ComponentType GetTypeName() { return MovementComponentId; };
+		static ComponentType GetTypeId() { return MovementComponentId; };
 	};
 
 	struct LifetimeCheckerComponent
@@ -60,7 +60,7 @@ namespace ComponentTests
 		}
 		~LifetimeCheckerComponent() { destructionCallback(); }
 
-		static ComponentType GetTypeName() { return LifetimeCheckerComponentId; };
+		static ComponentType GetTypeId() { return LifetimeCheckerComponentId; };
 	};
 
 	struct EntityManagerData

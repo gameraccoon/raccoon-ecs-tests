@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include "raccoon-ecs/error_handling.h"
+
 using ::testing::EmptyTestEventListener;
 using ::testing::InitGoogleTest;
 using ::testing::Test;
@@ -30,6 +32,7 @@ class TestInfoLogger : public EmptyTestEventListener
 
 void SGTestingEnvironment::SetUp()
 {
+	RaccoonEcs::gErrorHandler = [](const std::string& error){ std::cerr << error << std::endl; GTEST_FAIL(); };
 }
 
 void SGTestingEnvironment::TearDown()
@@ -39,22 +42,23 @@ void SGTestingEnvironment::TearDown()
 // Called before a test starts.
 void TestInfoLogger::OnTestStart(const TestInfo& /*test_info*/)
 {
-//	LogInfo("======= Test %s.%s starting.", test_info.test_case_name(), test_info.name());
+//	std::cout << "======= Test " << test_info.test_case_name() << "." << test_info.name() << " starting." << std::endl;
 }
 
 // Called after a failed assertion or a SUCCEED() invocation.
 void TestInfoLogger::OnTestPartResult(const TestPartResult& test_part_result)
 {
 	if (test_part_result.failed()) {
-		std::cerr << "======= " << (test_part_result.failed() ? " Failure in " : " Success in ") <<
-			test_part_result.file_name() << ":" << test_part_result.line_number() << " " << test_part_result.summary();
+//		std::cerr << "======= " << (test_part_result.failed() ? " Failure in " : " Success in ")
+//			<< test_part_result.file_name() << ":" << test_part_result.line_number() << " " << test_part_result.summary()
+//			<< std::endl;
 	}
 }
 
 // Called after a test ends.
 void TestInfoLogger::OnTestEnd(const TestInfo& /*test_info*/)
 {
-//	LogInfo("======= Test %s.%s ending.", test_info.test_case_name(), test_info.name());
+//	std::cin << "======= Test " << test_info.test_case_name() << "." << test_info.name() << " is ending." << std::endl;
 }
 
 int main(int argc, char* argv[])

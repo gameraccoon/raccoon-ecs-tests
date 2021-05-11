@@ -1,10 +1,12 @@
 #include <gtest/gtest.h>
 
+#include <functional>
+
 #include "raccoon-ecs/entity_manager.h"
 
 namespace ComponentTests
 {
-	enum ComponentType { TransformComponentId, MovementComponentId };
+	enum ComponentType { TransformComponentId, MovementComponentId, LifetimeCheckerComponentId };
 	using ComponentFactory = RaccoonEcs::ComponentFactoryImpl<ComponentType>;
 	using EntityGenerator = RaccoonEcs::EntityGenerator;
 	using EntityManager = RaccoonEcs::EntityManagerImpl<ComponentType>;
@@ -32,6 +34,35 @@ namespace ComponentTests
 		static ComponentType GetTypeName() { return MovementComponentId; };
 	};
 
+	struct LifetimeCheckerComponent
+	{
+		std::function<void()> destructionCallback;
+		std::function<void()> copyCallback;
+		std::function<void()> moveCallback;
+
+		LifetimeCheckerComponent() = default;
+		LifetimeCheckerComponent(LifetimeCheckerComponent& other)
+			: destructionCallback(other.destructionCallback)
+			, copyCallback(other.copyCallback)
+			, moveCallback(other.moveCallback)
+		{
+			copyCallback();
+		}
+
+		LifetimeCheckerComponent operator=(LifetimeCheckerComponent& other)
+		{
+			destructionCallback = other.destructionCallback;
+			copyCallback = other.copyCallback;
+			moveCallback = other.moveCallback;
+
+			copyCallback();
+			return *this;
+		}
+		~LifetimeCheckerComponent() { destructionCallback(); }
+
+		static ComponentType GetTypeName() { return LifetimeCheckerComponentId; };
+	};
+
 	struct EntityManagerData
 	{
 		ComponentFactory componentFactory;
@@ -44,11 +75,12 @@ namespace ComponentTests
 		auto data = std::make_unique<EntityManagerData>();
 		data->componentFactory.registerComponent<TransformComponent>();
 		data->componentFactory.registerComponent<MovementComponent>();
+		data->componentFactory.registerComponent<LifetimeCheckerComponent>();
 		return data;
 	}
 }
 
-TEST(Components, EntityCreationAndRemovement)
+TEST(EntityManager, EntitiesCanBeCreatedAndRemoved)
 {
 	using namespace ComponentTests;
 
@@ -69,7 +101,7 @@ TEST(Components, EntityCreationAndRemovement)
 	EXPECT_NE(testEntity1.getId(), testEntity3.getId());
 }
 
-TEST(Components, ComponentsAttachment)
+TEST(EntityManager, ComponentsCanBeAddedToEntities)
 {
 	using namespace ComponentTests;
 
@@ -92,7 +124,7 @@ TEST(Components, ComponentsAttachment)
 	}
 }
 
-TEST(Components, RemoveEntityWithComponents)
+TEST(EntityManager, EntitesWithComponentsCanBeRemoved)
 {
 	using namespace ComponentTests;
 
@@ -182,4 +214,54 @@ TEST(Components, RemoveEntityWithComponents)
 	transforms.clear();
 	entityManager.getComponents<TransformComponent>(transforms);
 	EXPECT_EQ(static_cast<size_t>(1u), transforms.size());
+}
+
+TEST(EntityManager, ComponentsNeverCopiedOrMovedAndAlwaysDestroyed)
+{
+	using namespace ComponentTests;
+
+	std::array<bool, 3> destroyedObjects{false, false, false};
+	int copiesCount = 0;
+
+	const auto destructionFn = [&destroyedObjects](int objectIndex) { destroyedObjects[objectIndex] = true; };
+	const auto copyFn = [&copiesCount]() { ++copiesCount; };
+
+	{
+		auto entityManagerData = prepareEntityManager();
+		EntityManager& entityManager = entityManagerData->entityManager;
+
+		Entity testEntity1 = entityManager.addEntity();
+		Entity testEntity2 = entityManager.addEntity();
+		Entity testEntity3 = entityManager.addEntity();
+
+		{
+			LifetimeCheckerComponent* lifetimeChecker = entityManager.addComponent<LifetimeCheckerComponent>(testEntity1);
+			lifetimeChecker->destructionCallback = [&destructionFn](){ destructionFn(0); };
+			lifetimeChecker->copyCallback = copyFn;
+		}
+
+		{
+			LifetimeCheckerComponent* lifetimeChecker = entityManager.addComponent<LifetimeCheckerComponent>(testEntity2);
+			lifetimeChecker->destructionCallback = [&destructionFn](){ destructionFn(1); };
+			lifetimeChecker->copyCallback = copyFn;
+		}
+
+		{
+			LifetimeCheckerComponent* lifetimeChecker = entityManager.addComponent<LifetimeCheckerComponent>(testEntity3);
+			lifetimeChecker->destructionCallback = [&destructionFn](){ destructionFn(2); };
+			lifetimeChecker->copyCallback = copyFn;
+		}
+
+		EXPECT_EQ(destroyedObjects[0], false);
+		entityManager.removeComponent<LifetimeCheckerComponent>(testEntity1);
+		EXPECT_EQ(destroyedObjects[0], true);
+
+		EXPECT_EQ(destroyedObjects[1], false);
+		EXPECT_EQ(destroyedObjects[2], false);
+	}
+
+	EXPECT_EQ(destroyedObjects[1], true);
+	EXPECT_EQ(destroyedObjects[2], true);
+
+	EXPECT_EQ(copiesCount, 0);
 }

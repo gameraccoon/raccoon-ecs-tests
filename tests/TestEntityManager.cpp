@@ -88,16 +88,33 @@ TEST(EntityManager, EntitiesCanBeCreatedAndRemoved)
 	auto entityManagerData = prepareEntityManager();
 	EntityManager& entityManager = entityManagerData->entityManager;
 
+	EXPECT_FALSE(entityManager.hasAnyEntities());
+
 	const Entity testEntity1 = entityManager.addEntity();
+
+	EXPECT_TRUE(entityManager.hasAnyEntities());
+	EXPECT_TRUE(entityManager.hasEntity(testEntity1));
+
 	const Entity testEntity2 = entityManager.addEntity();
 
+	EXPECT_TRUE(entityManager.hasAnyEntities());
+	EXPECT_TRUE(entityManager.hasEntity(testEntity1));
+	EXPECT_TRUE(entityManager.hasEntity(testEntity2));
 	EXPECT_NE(testEntity1, testEntity2);
 	EXPECT_NE(testEntity1.getId(), testEntity2.getId());
 
 	entityManager.removeEntity(testEntity2);
 
+	EXPECT_TRUE(entityManager.hasAnyEntities());
+	EXPECT_TRUE(entityManager.hasEntity(testEntity1));
+	EXPECT_FALSE(entityManager.hasEntity(testEntity2));
+
 	Entity testEntity3 = entityManager.addEntity();
 
+	EXPECT_TRUE(entityManager.hasAnyEntities());
+	EXPECT_TRUE(entityManager.hasEntity(testEntity1));
+	EXPECT_FALSE(entityManager.hasEntity(testEntity2));
+	EXPECT_TRUE(entityManager.hasEntity(testEntity3));
 	EXPECT_NE(testEntity1, testEntity3);
 	EXPECT_NE(testEntity1.getId(), testEntity3.getId());
 }

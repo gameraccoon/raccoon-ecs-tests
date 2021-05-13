@@ -50,7 +50,7 @@ include_directories(
 add_executable(${APP_NAME} ${UNITTESTS_SRC})
 target_compile_options(${APP_NAME} PRIVATE ${PROJECT_CXX_FLAGS})
 
-if (!MSVC)
+if (NOT MSVC)
 	target_link_libraries(${APP_NAME}
 		pthread
 	)

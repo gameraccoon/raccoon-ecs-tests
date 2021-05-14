@@ -291,12 +291,17 @@ TEST(EntityManager, ComponentSetsCanBeIteratedOver)
 
 	{
 		int iterationsCount = 0;
-		entityManager.forEachComponentSet<TransformComponent>(
-			[&iterationsCount](TransformComponent*)
+		auto transformPredicate =
+		[&iterationsCount](TransformComponent*)
 		{
 			++iterationsCount;
-		});
+		};
+		entityManager.forEachComponentSet<TransformComponent>(transformPredicate);
 		EXPECT_EQ(2, iterationsCount);
+
+		// call the second time to check that cached data is valid
+		entityManager.forEachComponentSet<TransformComponent>(transformPredicate);
+		EXPECT_EQ(4, iterationsCount);
 	}
 
 	{
@@ -338,12 +343,16 @@ TEST(EntityManager, ComponentSetsCanBeIteratedOverWithEntities)
 
 	{
 		int iterationsCount = 0;
-		entityManager.forEachComponentSetWithEntity<TransformComponent>(
-			[&iterationsCount](Entity, TransformComponent*)
+		auto transformPredicate = [&iterationsCount](Entity, TransformComponent*)
 		{
 			++iterationsCount;
-		});
+		};
+		entityManager.forEachComponentSetWithEntity<TransformComponent>(transformPredicate);
 		EXPECT_EQ(2, iterationsCount);
+
+		// call the second time to check that cached data is valid
+		entityManager.forEachComponentSetWithEntity<TransformComponent>(transformPredicate);
+		EXPECT_EQ(4, iterationsCount);
 	}
 
 	{
@@ -383,6 +392,10 @@ TEST(EntityManager, ComponentSetsCanBeCollected)
 		std::vector<std::tuple<TransformComponent*>> components;
 		entityManager.getComponents<TransformComponent>(components);
 		EXPECT_EQ(static_cast<size_t>(2u), components.size());
+
+		// call the second time to check that cached data is valid
+		entityManager.getComponents<TransformComponent>(components);
+		EXPECT_EQ(static_cast<size_t>(4u), components.size());
 	}
 
 	{
@@ -425,6 +438,10 @@ TEST(EntityManager, ComponentSetsWithEntitiesCanBeCollected)
 		{
 			EXPECT_NE(std::get<0>(components[0]), std::get<0>(components[1]));
 		}
+
+		// call the second time to check that cached data is valid
+		entityManager.getComponentsWithEntities<TransformComponent>(components);
+		EXPECT_EQ(static_cast<size_t>(4u), components.size());
 	}
 
 	{
@@ -626,4 +643,146 @@ TEST(EntityManager, EntityCanBeAddedInTwoSteps)
 
 	EXPECT_TRUE(entityManager.hasEntity(testEntity));
 	EXPECT_TRUE(entityManager.doesEntityHaveComponent<TransformComponent>(testEntity));
+}
+
+TEST(EntityManager, ComponentSetsCanBeIteratedOverWithAdditionalData)
+{
+	using namespace ComponentTests;
+
+	EntityGenerator entityGenerator(42);
+	ComponentFactory componentFactory;
+	RegisterComponents(componentFactory);
+	EntityManager entityManager1(componentFactory, entityGenerator);
+	EntityManager entityManager2(componentFactory, entityGenerator);
+
+	const Entity testEntity1 = entityManager1.addEntity();
+	entityManager1.addComponent<TransformComponent>(testEntity1);
+	entityManager1.addComponent<EmptyComponent>(testEntity1);
+
+	const Entity testEntity2 = entityManager2.addEntity();
+	entityManager2.addComponent<TransformComponent>(testEntity2);
+	entityManager2.addComponent<EmptyComponent>(testEntity2);
+
+	{
+		int sum = 0;
+		auto iterationFunction = [&sum](int data, EmptyComponent*, TransformComponent*)
+		{
+			sum += data;
+		};
+		entityManager1.forEachComponentSet<EmptyComponent, TransformComponent>(iterationFunction, 20);
+		entityManager2.forEachComponentSet<EmptyComponent, TransformComponent>(iterationFunction, 50);
+		EXPECT_EQ(70, sum);
+	}
+}
+
+TEST(EntityManager, ComponentSetsCanBeIteratedOverWithEntitiesAndAdditionalData)
+{
+	using namespace ComponentTests;
+
+	EntityGenerator entityGenerator(42);
+	ComponentFactory componentFactory;
+	RegisterComponents(componentFactory);
+	EntityManager entityManager1(componentFactory, entityGenerator);
+	EntityManager entityManager2(componentFactory, entityGenerator);
+
+	const Entity testEntity1 = entityManager1.addEntity();
+	entityManager1.addComponent<TransformComponent>(testEntity1);
+	entityManager1.addComponent<EmptyComponent>(testEntity1);
+
+	const Entity testEntity2 = entityManager2.addEntity();
+	entityManager2.addComponent<TransformComponent>(testEntity2);
+	entityManager2.addComponent<EmptyComponent>(testEntity2);
+
+	{
+		int sum = 0;
+		auto iterationFunction = [&sum](int data, Entity, EmptyComponent*, TransformComponent*)
+		{
+			sum += data;
+		};
+		entityManager1.forEachComponentSetWithEntity<EmptyComponent, TransformComponent>(iterationFunction, 20);
+		entityManager2.forEachComponentSetWithEntity<EmptyComponent, TransformComponent>(iterationFunction, 50);
+		EXPECT_EQ(70, sum);
+	}
+}
+
+TEST(EntityManager, ComponentSetsWithAdditionalDataCanBeCollected)
+{
+	using namespace ComponentTests;
+
+	EntityGenerator entityGenerator(42);
+	ComponentFactory componentFactory;
+	RegisterComponents(componentFactory);
+	EntityManager entityManager1(componentFactory, entityGenerator);
+	EntityManager entityManager2(componentFactory, entityGenerator);
+
+	const Entity testEntity1 = entityManager1.addEntity();
+	entityManager1.addComponent<TransformComponent>(testEntity1);
+	entityManager1.addComponent<EmptyComponent>(testEntity1);
+
+	const Entity testEntity2 = entityManager2.addEntity();
+	entityManager2.addComponent<TransformComponent>(testEntity2);
+	entityManager2.addComponent<EmptyComponent>(testEntity2);
+
+	{
+		std::vector<std::tuple<int, EmptyComponent*, TransformComponent*>> components;
+		entityManager1.getComponents<EmptyComponent, TransformComponent>(components, 10);
+		entityManager2.getComponents<EmptyComponent, TransformComponent>(components, 20);
+		EXPECT_EQ(static_cast<size_t>(2u), components.size());
+
+		if (components.size() >= 2)
+		{
+			if (std::get<0>(components[0]) == 10)
+			{
+				EXPECT_EQ(20, std::get<0>(components[1]));
+			}
+			else
+			{
+				EXPECT_EQ(20, std::get<0>(components[0]));
+				EXPECT_EQ(10, std::get<0>(components[1]));
+			}
+		}
+	}
+}
+
+TEST(EntityManager, ComponentSetsWithEntitiesAndAdditionalDataCanBeCollected)
+{
+	using namespace ComponentTests;
+
+	EntityGenerator entityGenerator(42);
+	ComponentFactory componentFactory;
+	RegisterComponents(componentFactory);
+	EntityManager entityManager1(componentFactory, entityGenerator);
+	EntityManager entityManager2(componentFactory, entityGenerator);
+
+	const Entity testEntity1 = entityManager1.addEntity();
+	entityManager1.addComponent<TransformComponent>(testEntity1);
+	entityManager1.addComponent<EmptyComponent>(testEntity1);
+
+	const Entity testEntity2 = entityManager2.addEntity();
+	entityManager2.addComponent<TransformComponent>(testEntity2);
+	entityManager2.addComponent<EmptyComponent>(testEntity2);
+
+	{
+		std::vector<std::tuple<int, Entity, EmptyComponent*, TransformComponent*>> components;
+		entityManager1.getComponentsWithEntities<EmptyComponent, TransformComponent>(components, 10);
+		entityManager2.getComponentsWithEntities<EmptyComponent, TransformComponent>(components, 20);
+		EXPECT_EQ(static_cast<size_t>(2u), components.size());
+
+		if (components.size() >= 2)
+		{
+			if (std::get<0>(components[0]) == 10)
+			{
+				EXPECT_EQ(testEntity1, std::get<1>(components[0]));
+				EXPECT_EQ(20, std::get<0>(components[1]));
+				EXPECT_EQ(testEntity2, std::get<1>(components[1]));
+			}
+			else
+			{
+				EXPECT_EQ(20, std::get<0>(components[0]));
+				EXPECT_EQ(testEntity2, std::get<1>(components[0]));
+				EXPECT_EQ(10, std::get<0>(components[1]));
+				EXPECT_EQ(testEntity1, std::get<1>(components[1]));
+			}
+		}
+	}
 }

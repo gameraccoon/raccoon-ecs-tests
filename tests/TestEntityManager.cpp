@@ -73,7 +73,7 @@ namespace ComponentTests
 	struct EntityManagerData
 	{
 		ComponentFactory componentFactory;
-		EntityGenerator entityGenerator{42};
+		EntityGenerator entityGenerator;
 		EntityManager entityManager{componentFactory, entityGenerator};
 	};
 
@@ -580,7 +580,7 @@ TEST(EntityManager, EntitiesCanBeTransferedBetweenCopmonents)
 {
 	using namespace ComponentTests;
 
-	EntityGenerator entityGenerator(42);
+	EntityGenerator entityGenerator;
 	ComponentFactory componentFactory;
 	RegisterComponents(componentFactory);
 	EntityManager entityManager1(componentFactory, entityGenerator);
@@ -618,7 +618,7 @@ TEST(EntityManager, EntityCanBeAddedInTwoSteps)
 
 	auto doRedoCommand = [testEntity, &entityManager]()
 	{
-		entityManager.tryInsertEntity(testEntity);
+		entityManager.reinsertPrevioslyExistingEntity(testEntity);
 		entityManager.addComponent<TransformComponent>(testEntity);
 	};
 
@@ -649,7 +649,7 @@ TEST(EntityManager, ComponentSetsCanBeIteratedOverWithAdditionalData)
 {
 	using namespace ComponentTests;
 
-	EntityGenerator entityGenerator(42);
+	EntityGenerator entityGenerator;
 	ComponentFactory componentFactory;
 	RegisterComponents(componentFactory);
 	EntityManager entityManager1(componentFactory, entityGenerator);
@@ -679,7 +679,7 @@ TEST(EntityManager, ComponentSetsCanBeIteratedOverWithEntitiesAndAdditionalData)
 {
 	using namespace ComponentTests;
 
-	EntityGenerator entityGenerator(42);
+	EntityGenerator entityGenerator;
 	ComponentFactory componentFactory;
 	RegisterComponents(componentFactory);
 	EntityManager entityManager1(componentFactory, entityGenerator);
@@ -709,7 +709,7 @@ TEST(EntityManager, ComponentSetsWithAdditionalDataCanBeCollected)
 {
 	using namespace ComponentTests;
 
-	EntityGenerator entityGenerator(42);
+	EntityGenerator entityGenerator;
 	ComponentFactory componentFactory;
 	RegisterComponents(componentFactory);
 	EntityManager entityManager1(componentFactory, entityGenerator);
@@ -748,7 +748,7 @@ TEST(EntityManager, ComponentSetsWithEntitiesAndAdditionalDataCanBeCollected)
 {
 	using namespace ComponentTests;
 
-	EntityGenerator entityGenerator(42);
+	EntityGenerator entityGenerator;
 	ComponentFactory componentFactory;
 	RegisterComponents(componentFactory);
 	EntityManager entityManager1(componentFactory, entityGenerator);

@@ -5,7 +5,7 @@
 
 #include "raccoon-ecs/entity_manager.h"
 
-namespace ComponentTests
+namespace EntityManagerTestInternals
 {
 	enum ComponentType { EmptyComponentId, TransformComponentId, MovementComponentId, LifetimeCheckerComponentId };
 	using ComponentFactory = RaccoonEcs::ComponentFactoryImpl<ComponentType>;
@@ -95,7 +95,7 @@ namespace ComponentTests
 
 TEST(EntityManager, EntitiesCanBeCreatedAndRemoved)
 {
-	using namespace ComponentTests;
+	using namespace EntityManagerTestInternals;
 
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager = entityManagerData->entityManager;
@@ -133,7 +133,7 @@ TEST(EntityManager, EntitiesCanBeCreatedAndRemoved)
 
 TEST(EntityManager, ComponentsCanBeAddedToEntities)
 {
-	using namespace ComponentTests;
+	using namespace EntityManagerTestInternals;
 
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager = entityManagerData->entityManager;
@@ -156,7 +156,7 @@ TEST(EntityManager, ComponentsCanBeAddedToEntities)
 
 TEST(EntityManager, EntitesWithComponentsCanBeRemoved)
 {
-	using namespace ComponentTests;
+	using namespace EntityManagerTestInternals;
 
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager = entityManagerData->entityManager;
@@ -216,7 +216,7 @@ TEST(EntityManager, EntitesWithComponentsCanBeRemoved)
 
 TEST(EntityManager, ComponentsNeverCopiedOrMovedAndAlwaysDestroyed)
 {
-	using namespace ComponentTests;
+	using namespace EntityManagerTestInternals;
 
 	std::array<bool, 3> destroyedObjects{false, false, false};
 	int copiesCount = 0;
@@ -250,23 +250,23 @@ TEST(EntityManager, ComponentsNeverCopiedOrMovedAndAlwaysDestroyed)
 			lifetimeChecker->copyCallback = copyFn;
 		}
 
-		EXPECT_EQ(destroyedObjects[0], false);
+		EXPECT_EQ(false, destroyedObjects[0]);
 		entityManager.removeComponent<LifetimeCheckerComponent>(testEntity1);
-		EXPECT_EQ(destroyedObjects[0], true);
+		EXPECT_EQ(true, destroyedObjects[0]);
 
-		EXPECT_EQ(destroyedObjects[1], false);
-		EXPECT_EQ(destroyedObjects[2], false);
+		EXPECT_EQ(false, destroyedObjects[1]);
+		EXPECT_EQ(false, destroyedObjects[2]);
 	}
 
-	EXPECT_EQ(destroyedObjects[1], true);
-	EXPECT_EQ(destroyedObjects[2], true);
+	EXPECT_EQ(true, destroyedObjects[1]);
+	EXPECT_EQ(true, destroyedObjects[2]);
 
-	EXPECT_EQ(copiesCount, 0);
+	EXPECT_EQ(0, copiesCount);
 }
 
 TEST(EntityManager, ComponentSetsCanBeIteratedOver)
 {
-	using namespace ComponentTests;
+	using namespace EntityManagerTestInternals;
 
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager = entityManagerData->entityManager;
@@ -317,7 +317,7 @@ TEST(EntityManager, ComponentSetsCanBeIteratedOver)
 
 TEST(EntityManager, ComponentSetsCanBeIteratedOverWithEntities)
 {
-	using namespace ComponentTests;
+	using namespace EntityManagerTestInternals;
 
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager = entityManagerData->entityManager;
@@ -369,7 +369,7 @@ TEST(EntityManager, ComponentSetsCanBeIteratedOverWithEntities)
 
 TEST(EntityManager, ComponentSetsCanBeCollected)
 {
-	using namespace ComponentTests;
+	using namespace EntityManagerTestInternals;
 
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager = entityManagerData->entityManager;
@@ -407,7 +407,7 @@ TEST(EntityManager, ComponentSetsCanBeCollected)
 
 TEST(EntityManager, ComponentSetsWithEntitiesCanBeCollected)
 {
-	using namespace ComponentTests;
+	using namespace EntityManagerTestInternals;
 
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager = entityManagerData->entityManager;
@@ -457,7 +457,7 @@ TEST(EntityManager, ComponentSetsWithEntitiesCanBeCollected)
 
 TEST(EntityManager, EntitiesCanBeMatchedByHavingComponents)
 {
-	using namespace ComponentTests;
+	using namespace EntityManagerTestInternals;
 
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager = entityManagerData->entityManager;
@@ -521,7 +521,7 @@ TEST(EntityManager, EntitiesCanBeMatchedByHavingComponents)
 
 TEST(EntityManager, AllCopmonentsFromOneEntityCanBeCollected)
 {
-	using namespace ComponentTests;
+	using namespace EntityManagerTestInternals;
 
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager = entityManagerData->entityManager;
@@ -549,7 +549,7 @@ TEST(EntityManager, AllCopmonentsFromOneEntityCanBeCollected)
 
 TEST(EntityManager, ComponentAdditionOrRemovementCanBeScheduled)
 {
-	using namespace ComponentTests;
+	using namespace EntityManagerTestInternals;
 
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager = entityManagerData->entityManager;
@@ -578,7 +578,7 @@ TEST(EntityManager, ComponentAdditionOrRemovementCanBeScheduled)
 
 TEST(EntityManager, EntitiesCanBeTransferedBetweenCopmonents)
 {
-	using namespace ComponentTests;
+	using namespace EntityManagerTestInternals;
 
 	EntityGenerator entityGenerator;
 	ComponentFactory componentFactory;
@@ -606,10 +606,9 @@ TEST(EntityManager, EntitiesCanBeTransferedBetweenCopmonents)
 	}
 }
 
-
 TEST(EntityManager, EntityCanBeAddedInTwoSteps)
 {
-	using namespace ComponentTests;
+	using namespace EntityManagerTestInternals;
 
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager = entityManagerData->entityManager;
@@ -647,7 +646,7 @@ TEST(EntityManager, EntityCanBeAddedInTwoSteps)
 
 TEST(EntityManager, ComponentSetsCanBeIteratedOverWithAdditionalData)
 {
-	using namespace ComponentTests;
+	using namespace EntityManagerTestInternals;
 
 	EntityGenerator entityGenerator;
 	ComponentFactory componentFactory;
@@ -677,7 +676,7 @@ TEST(EntityManager, ComponentSetsCanBeIteratedOverWithAdditionalData)
 
 TEST(EntityManager, ComponentSetsCanBeIteratedOverWithEntitiesAndAdditionalData)
 {
-	using namespace ComponentTests;
+	using namespace EntityManagerTestInternals;
 
 	EntityGenerator entityGenerator;
 	ComponentFactory componentFactory;
@@ -707,7 +706,7 @@ TEST(EntityManager, ComponentSetsCanBeIteratedOverWithEntitiesAndAdditionalData)
 
 TEST(EntityManager, ComponentSetsWithAdditionalDataCanBeCollected)
 {
-	using namespace ComponentTests;
+	using namespace EntityManagerTestInternals;
 
 	EntityGenerator entityGenerator;
 	ComponentFactory componentFactory;
@@ -746,7 +745,7 @@ TEST(EntityManager, ComponentSetsWithAdditionalDataCanBeCollected)
 
 TEST(EntityManager, ComponentSetsWithEntitiesAndAdditionalDataCanBeCollected)
 {
-	using namespace ComponentTests;
+	using namespace EntityManagerTestInternals;
 
 	EntityGenerator entityGenerator;
 	ComponentFactory componentFactory;

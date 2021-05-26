@@ -15,7 +15,7 @@ set(TESTS_BASE_DIR ${CMAKE_SOURCE_DIR})
 set(ECS_INCLUDE_DIR "${TESTS_BASE_DIR}/../include")
 set(BIN_PLATFORM "x64")
 
-add_definitions(-DECS_DEBUG_CHECKS_ENABLED)
+add_definitions(-DRACCOON_ECS_DEBUG_CHECKS_ENABLED)
 
 # compiler parameters
 if (MSVC)

@@ -17,8 +17,8 @@ TEST(ThreadPool, ExecuteOneTaskOneThread)
 	RaccoonEcs::ThreadPool pool(1);
 	int testValue1 = 0;
 	int testValue2 = 0;
-	pool.submitTask([&testValue1]{ ++testValue1; }, [&testValue2]{ ++testValue2; });
-	pool.executeAll();
+	pool.executeTask([&testValue1]{ ++testValue1; }, [&testValue2]{ ++testValue2; });
+	pool.finalizeTasks();
 
 	EXPECT_EQ(1, testValue1);
 	EXPECT_EQ(1, testValue2);
@@ -29,8 +29,8 @@ TEST(ThreadPool, ExecuteOneTaskThreeThreads)
 	RaccoonEcs::ThreadPool pool(3);
 	int testValue1 = 0;
 	int testValue2 = 0;
-	pool.submitTask([&testValue1]{ ++testValue1; }, [&testValue2]{ ++testValue2; });
-	pool.executeAll();
+	pool.executeTask([&testValue1]{ ++testValue1; }, [&testValue2]{ ++testValue2; });
+	pool.finalizeTasks();
 
 	EXPECT_EQ(1, testValue1);
 	EXPECT_EQ(1, testValue2);
@@ -43,12 +43,12 @@ TEST(ThreadPool, ExecuteTenTasksThreeThreads)
 	int testValue2 = 0;
 	for (int i = 0; i < 10; ++i)
 	{
-		pool.submitTask(
+		pool.executeTask(
 			[&testValue1]{ std::atomic_fetch_add(&testValue1, 1); },
 			[&testValue2]{ ++testValue2; }
 		);
 	}
-	pool.executeAll();
+	pool.finalizeTasks();
 
 	EXPECT_EQ(10, testValue1);
 	EXPECT_EQ(10, testValue2);
@@ -61,13 +61,37 @@ TEST(ThreadPool, ExecuteTwoTasksThreeThreads)
 	int testValue2 = 0;
 	for (int i = 0; i < 2; ++i)
 	{
-		pool.submitTask(
+		pool.executeTask(
 			[&testValue1]{ std::atomic_fetch_add(&testValue1, 1); },
 			[&testValue2]{ ++testValue2; }
 		);
 	}
-	pool.executeAll();
+	pool.finalizeTasks();
 
 	EXPECT_EQ(2, testValue1);
 	EXPECT_EQ(2, testValue2);
+}
+
+TEST(ThreadPool, ExecuteTasksThatCanSpawnNewTasks)
+{
+	RaccoonEcs::ThreadPool pool(3);
+	std::atomic<int> testValue1 = 0;
+	int testValue2 = 0;
+
+	auto taskLambda = [&testValue1]{ std::atomic_fetch_add(&testValue1, 1); };
+	auto finalizerLambda = [&taskLambda, &testValue2, &pool]{
+		++testValue2;
+		pool.executeTask(taskLambda, nullptr);
+		pool.executeTask(taskLambda, nullptr);
+	};
+
+	for (int i = 0; i < 5; ++i)
+	{
+		pool.executeTask(taskLambda, finalizerLambda);
+	}
+
+	pool.finalizeTasks();
+
+	EXPECT_EQ(15, testValue1);
+	EXPECT_EQ(5, testValue2);
 }

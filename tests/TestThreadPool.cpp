@@ -17,7 +17,7 @@ TEST(ThreadPool, ExecuteOneTaskOneThread)
 	RaccoonEcs::ThreadPool pool(1);
 	int testValue1 = 0;
 	int testValue2 = 0;
-	pool.executeTask([&testValue1]{ ++testValue1; }, [&testValue2]{ ++testValue2; });
+	pool.executeTask([&testValue1]{ ++testValue1; return std::any{}; }, [&testValue2](std::any&&){ ++testValue2; });
 	pool.finalizeTasks();
 
 	EXPECT_EQ(1, testValue1);
@@ -29,7 +29,7 @@ TEST(ThreadPool, ExecuteOneTaskThreeThreads)
 	RaccoonEcs::ThreadPool pool(3);
 	int testValue1 = 0;
 	int testValue2 = 0;
-	pool.executeTask([&testValue1]{ ++testValue1; }, [&testValue2]{ ++testValue2; });
+	pool.executeTask([&testValue1]{ ++testValue1; return std::any{}; }, [&testValue2](std::any&&){ ++testValue2; });
 	pool.finalizeTasks();
 
 	EXPECT_EQ(1, testValue1);
@@ -44,8 +44,8 @@ TEST(ThreadPool, ExecuteTenTasksThreeThreads)
 	for (int i = 0; i < 10; ++i)
 	{
 		pool.executeTask(
-			[&testValue1]{ std::atomic_fetch_add(&testValue1, 1); },
-			[&testValue2]{ ++testValue2; }
+			[&testValue1]{ std::atomic_fetch_add(&testValue1, 1); return std::any{}; },
+			[&testValue2](std::any&&){ ++testValue2; }
 		);
 	}
 	pool.finalizeTasks();
@@ -62,8 +62,8 @@ TEST(ThreadPool, ExecuteTwoTasksThreeThreads)
 	for (int i = 0; i < 2; ++i)
 	{
 		pool.executeTask(
-			[&testValue1]{ std::atomic_fetch_add(&testValue1, 1); },
-			[&testValue2]{ ++testValue2; }
+			[&testValue1]{ std::atomic_fetch_add(&testValue1, 1); return std::any{}; },
+			[&testValue2](std::any&&){ ++testValue2; }
 		);
 	}
 	pool.finalizeTasks();
@@ -78,8 +78,8 @@ TEST(ThreadPool, ExecuteTasksThatCanSpawnNewTasks)
 	std::atomic<int> testValue1 = 0;
 	int testValue2 = 0;
 
-	auto taskLambda = [&testValue1]{ std::atomic_fetch_add(&testValue1, 1); };
-	auto finalizerLambda = [&taskLambda, &testValue2, &pool]{
+	auto taskLambda = [&testValue1]{ std::atomic_fetch_add(&testValue1, 1); return std::any{}; };
+	auto finalizerLambda = [&taskLambda, &testValue2, &pool](std::any&&){
 		++testValue2;
 		pool.executeTask(taskLambda, nullptr);
 		pool.executeTask(taskLambda, nullptr);

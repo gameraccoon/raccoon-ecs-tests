@@ -1,8 +1,9 @@
 #include <gtest/gtest.h>
 
+#include <atomic>
 #include <functional>
 #include <vector>
-#include <atomic>
+#include <mutex>
 
 #include "raccoon-ecs/thread_pool.h"
 
@@ -303,4 +304,25 @@ TEST(ThreadPool, RunTwoTaskGroupsOneInFinalizerOfOther)
 	EXPECT_EQ(5, taskValueOuter);
 	EXPECT_EQ(10, finalizeValueInner);
 	EXPECT_EQ(5, finalizeValueOuter);
+}
+
+TEST(ThreadPool, UseCustomThreadFinalizationFunction)
+{
+	static thread_local int tlTestValue = 1;
+	int sumBetweenThreads = 0;
+	std::mutex sumMutex;
+	auto finalizationTask = [&sumMutex, &sumBetweenThreads]{
+		std::lock_guard l(sumMutex);
+		sumBetweenThreads += tlTestValue;
+	};
+
+	{
+		RaccoonEcs::ThreadPool pool(3, finalizationTask);
+		pool.executeTask([]{ ++tlTestValue; return std::any{}; }, nullptr);
+		pool.executeTask([]{ tlTestValue += 2; return std::any{}; }, nullptr);
+		pool.finalizeTasks();
+	}
+
+	EXPECT_EQ(1, tlTestValue);
+	EXPECT_EQ(6, sumBetweenThreads);
 }

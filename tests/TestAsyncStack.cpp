@@ -8,17 +8,17 @@ TEST(AsyncStack, EmptyStackPop)
 {
 	RaccoonEcs::AsyncStack<int> stack;
 	int a;
-	EXPECT_FALSE(stack.pop_front(a));
+	EXPECT_FALSE(stack.popFront(a));
 }
 
 TEST(AsyncStack, PushAndPop)
 {
 	RaccoonEcs::AsyncStack<int> stack;
 
-	stack.push_front(10);
+	stack.pushFront(10);
 
 	int a;
-	EXPECT_TRUE(stack.pop_front(a));
+	EXPECT_TRUE(stack.popFront(a));
 	EXPECT_EQ(10, a);
 }
 
@@ -26,13 +26,13 @@ TEST(AsyncStack, PushMultiplePopOneAndDestroy)
 {
 	RaccoonEcs::AsyncStack<int> stack;
 
-	stack.push_front(10);
-	stack.push_front(20);
-	stack.push_front(30);
-	stack.push_front(40);
+	stack.pushFront(10);
+	stack.pushFront(20);
+	stack.pushFront(30);
+	stack.pushFront(40);
 
 	int a;
-	EXPECT_TRUE(stack.pop_front(a));
+	EXPECT_TRUE(stack.popFront(a));
 	EXPECT_EQ(40, a);
 }
 
@@ -40,21 +40,21 @@ TEST(AsyncStack, PushMultiplePopMultiple)
 {
 	RaccoonEcs::AsyncStack<int> stack;
 
-	stack.push_front(10);
-	stack.push_front(20);
-	stack.push_front(30);
-	stack.push_front(40);
+	stack.pushFront(10);
+	stack.pushFront(20);
+	stack.pushFront(30);
+	stack.pushFront(40);
 
 	int a;
-	EXPECT_TRUE(stack.pop_front(a));
+	EXPECT_TRUE(stack.popFront(a));
 	EXPECT_EQ(40, a);
-	EXPECT_TRUE(stack.pop_front(a));
+	EXPECT_TRUE(stack.popFront(a));
 	EXPECT_EQ(30, a);
-	EXPECT_TRUE(stack.pop_front(a));
+	EXPECT_TRUE(stack.popFront(a));
 	EXPECT_EQ(20, a);
-	EXPECT_TRUE(stack.pop_front(a));
+	EXPECT_TRUE(stack.popFront(a));
 	EXPECT_EQ(10, a);
-	EXPECT_FALSE(stack.pop_front(a));
+	EXPECT_FALSE(stack.popFront(a));
 }
 
 TEST(AsyncStack, ProduceAndConsumeTwoThreads)
@@ -68,7 +68,7 @@ TEST(AsyncStack, ProduceAndConsumeTwoThreads)
 		int itemsLeft = itemsCount;
 		while(itemsLeft > 0)
 		{
-			if (stack.pop_front(a))
+			if (stack.popFront(a))
 			{
 				--itemsLeft;
 				results.push_back(a);
@@ -83,7 +83,7 @@ TEST(AsyncStack, ProduceAndConsumeTwoThreads)
 	std::thread producer([&stack]{
 		for (int i = 0; i < itemsCount; ++i)
 		{
-			stack.push_front(i * 10);
+			stack.pushFront(i * 10);
 		}
 	});
 

@@ -3,3 +3,4 @@ CMakeLists.txt.user
 # JetBrains IDE files
 /.idea
 /cmake-*
+/build

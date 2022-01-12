@@ -9,7 +9,7 @@ namespace EntityManagerTestInternals
 {
 	enum ComponentType { EmptyComponentId, TransformComponentId, MovementComponentId, LifetimeCheckerComponentId };
 	using ComponentFactory = RaccoonEcs::ComponentFactoryImpl<ComponentType>;
-	using EntityGenerator = RaccoonEcs::EntityGenerator;
+	using EntityGenerator = RaccoonEcs::IncrementalEntityGenerator;
 	using EntityManager = RaccoonEcs::EntityManagerImpl<ComponentType>;
 	using Entity = RaccoonEcs::Entity;
 	using TypedComponent = RaccoonEcs::TypedComponentImpl<ComponentType>;
@@ -613,11 +613,11 @@ TEST(EntityManager, EntityCanBeAddedInTwoSteps)
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager = entityManagerData->entityManager;
 
-	Entity testEntity = entityManager.getNonExistentEntity();
+	Entity testEntity = entityManager.generateNewEntityUnsafe();
 
 	auto doRedoCommand = [testEntity, &entityManager]()
 	{
-		entityManager.reinsertPrevioslyExistingEntity(testEntity);
+		entityManager.addExistingEntityUnsafe(testEntity);
 		entityManager.addComponent<TransformComponent>(testEntity);
 	};
 

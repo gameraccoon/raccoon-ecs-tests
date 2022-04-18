@@ -7,7 +7,14 @@
 
 namespace EntityManagerTestInternals
 {
-	enum ComponentType { EmptyComponentId, TransformComponentId, MovementComponentId, LifetimeCheckerComponentId };
+	enum ComponentType {
+		EmptyComponentId,
+		TransformComponentId,
+		MovementComponentId,
+		LifetimeCheckerComponentId,
+		NotUsedComponentId,
+	};
+
 	using ComponentFactory = RaccoonEcs::ComponentFactoryImpl<ComponentType>;
 	using EntityGenerator = RaccoonEcs::IncrementalEntityGenerator;
 	using EntityManager = RaccoonEcs::EntityManagerImpl<ComponentType>;
@@ -68,6 +75,11 @@ namespace EntityManagerTestInternals
 		~LifetimeCheckerComponent() { destructionCallback(); }
 
 		static ComponentType GetTypeId() { return LifetimeCheckerComponentId; };
+	};
+
+	struct NotUsedComponent
+	{
+		static ComponentType GetTypeId() { return NotUsedComponentId; };
 	};
 
 	struct EntityManagerData
@@ -784,4 +796,25 @@ TEST(EntityManager, ComponentSetsWithEntitiesAndAdditionalDataCanBeCollected)
 			}
 		}
 	}
+}
+
+TEST(EntityManager, EntityCountCanBeGathered)
+{
+	using namespace EntityManagerTestInternals;
+
+	auto entityManagerData = PrepareEntityManager();
+	EntityManager& entityManager = entityManagerData->entityManager;
+
+	const Entity testEntity1 = entityManager.addEntity();
+	entityManager.addComponent<TransformComponent>(testEntity1);
+	entityManager.addComponent<MovementComponent>(testEntity1);
+
+	const Entity testEntity2 = entityManager.addEntity();
+	entityManager.addComponent<TransformComponent>(testEntity2);
+	entityManager.addComponent<EmptyComponent>(testEntity2);
+
+	EXPECT_EQ(static_cast<size_t>(0), entityManager.getMatchingEntitiesCount<NotUsedComponent>());
+	EXPECT_EQ(static_cast<size_t>(1), entityManager.getMatchingEntitiesCount<MovementComponent>());
+	EXPECT_EQ(static_cast<size_t>(1), entityManager.getMatchingEntitiesCount<EmptyComponent>());
+	EXPECT_EQ(static_cast<size_t>(2), entityManager.getMatchingEntitiesCount<TransformComponent>());
 }

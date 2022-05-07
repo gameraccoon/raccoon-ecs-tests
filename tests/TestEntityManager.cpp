@@ -23,6 +23,12 @@ namespace EntityManagerTestInternals
 
 	struct TestVector2
 	{
+		TestVector2() = default;
+		TestVector2(int x, int y)
+			: x(x)
+			, y(y)
+		{}
+
 		int x;
 		int y;
 
@@ -55,7 +61,7 @@ namespace EntityManagerTestInternals
 		std::function<void()> moveCallback;
 
 		LifetimeCheckerComponent() = default;
-		LifetimeCheckerComponent(LifetimeCheckerComponent& other)
+		LifetimeCheckerComponent(const LifetimeCheckerComponent& other)
 			: destructionCallback(other.destructionCallback)
 			, copyCallback(other.copyCallback)
 			, moveCallback(other.moveCallback)
@@ -63,13 +69,31 @@ namespace EntityManagerTestInternals
 			copyCallback();
 		}
 
-		LifetimeCheckerComponent operator=(LifetimeCheckerComponent& other)
+		LifetimeCheckerComponent operator=(const LifetimeCheckerComponent& other)
 		{
 			destructionCallback = other.destructionCallback;
 			copyCallback = other.copyCallback;
 			moveCallback = other.moveCallback;
 
 			copyCallback();
+			return *this;
+		}
+
+		LifetimeCheckerComponent(LifetimeCheckerComponent&& other)
+			: destructionCallback(other.destructionCallback)
+			, copyCallback(other.copyCallback)
+			, moveCallback(other.moveCallback)
+		{
+			moveCallback();
+		}
+
+		LifetimeCheckerComponent operator=(LifetimeCheckerComponent&& other)
+		{
+			destructionCallback = other.destructionCallback;
+			copyCallback = other.copyCallback;
+			moveCallback = other.moveCallback;
+
+			moveCallback();
 			return *this;
 		}
 		~LifetimeCheckerComponent() { destructionCallback(); }
@@ -232,9 +256,11 @@ TEST(EntityManager, ComponentsNeverCopiedOrMovedAndAlwaysDestroyed)
 
 	std::array<bool, 3> destroyedObjects{false, false, false};
 	int copiesCount = 0;
+	int movesCount = 0;
 
 	const auto destructionFn = [&destroyedObjects](int objectIndex) { destroyedObjects[objectIndex] = true; };
 	const auto copyFn = [&copiesCount]() { ++copiesCount; };
+	const auto moveFn = [&movesCount]() { ++movesCount; };
 
 	{
 		auto entityManagerData = PrepareEntityManager();
@@ -248,18 +274,21 @@ TEST(EntityManager, ComponentsNeverCopiedOrMovedAndAlwaysDestroyed)
 			LifetimeCheckerComponent* lifetimeChecker = entityManager.addComponent<LifetimeCheckerComponent>(testEntity1);
 			lifetimeChecker->destructionCallback = [&destructionFn](){ destructionFn(0); };
 			lifetimeChecker->copyCallback = copyFn;
+			lifetimeChecker->moveCallback = moveFn;
 		}
 
 		{
 			LifetimeCheckerComponent* lifetimeChecker = entityManager.addComponent<LifetimeCheckerComponent>(testEntity2);
 			lifetimeChecker->destructionCallback = [&destructionFn](){ destructionFn(1); };
 			lifetimeChecker->copyCallback = copyFn;
+			lifetimeChecker->moveCallback = moveFn;
 		}
 
 		{
 			LifetimeCheckerComponent* lifetimeChecker = entityManager.addComponent<LifetimeCheckerComponent>(testEntity3);
 			lifetimeChecker->destructionCallback = [&destructionFn](){ destructionFn(2); };
 			lifetimeChecker->copyCallback = copyFn;
+			lifetimeChecker->moveCallback = moveFn;
 		}
 
 		EXPECT_EQ(false, destroyedObjects[0]);
@@ -274,6 +303,7 @@ TEST(EntityManager, ComponentsNeverCopiedOrMovedAndAlwaysDestroyed)
 	EXPECT_EQ(true, destroyedObjects[2]);
 
 	EXPECT_EQ(0, copiesCount);
+	EXPECT_EQ(0, movesCount);
 }
 
 TEST(EntityManager, ComponentSetsCanBeIteratedOver)
@@ -798,7 +828,7 @@ TEST(EntityManager, ComponentSetsWithEntitiesAndAdditionalDataCanBeCollected)
 	}
 }
 
-TEST(EntityManager, EntityCountCanBeGathered)
+TEST(EntityManager, MatchingEntityCountCanBeGathered)
 {
 	using namespace EntityManagerTestInternals;
 
@@ -817,4 +847,79 @@ TEST(EntityManager, EntityCountCanBeGathered)
 	EXPECT_EQ(static_cast<size_t>(1), entityManager.getMatchingEntitiesCount<MovementComponent>());
 	EXPECT_EQ(static_cast<size_t>(1), entityManager.getMatchingEntitiesCount<EmptyComponent>());
 	EXPECT_EQ(static_cast<size_t>(2), entityManager.getMatchingEntitiesCount<TransformComponent>());
+}
+
+TEST(EntityManager, EntityManagerCanBeCloned)
+{
+	using namespace EntityManagerTestInternals;
+
+	auto entityManagerData = PrepareEntityManager();
+	EntityManager& entityManager = entityManagerData->entityManager;
+
+	const Entity testEntity1 = entityManager.addEntity();
+	TransformComponent* transform1 = entityManager.addComponent<TransformComponent>(testEntity1);
+	transform1->pos = TestVector2{10, 20};
+	MovementComponent* movement1 = entityManager.addComponent<MovementComponent>(testEntity1);
+	movement1->move = TestVector2{30, 40};
+
+	const Entity testEntity2 = entityManager.addEntity();
+	TransformComponent* transform2 = entityManager.addComponent<TransformComponent>(testEntity2);
+	transform2->pos = TestVector2{50, 60};
+	MovementComponent* movement2 = entityManager.addComponent<MovementComponent>(testEntity2);
+	movement2->move = TestVector2{70, 80};
+
+	std::unique_ptr<EntityManager> entityManagerCopy = entityManager.clone();
+
+	{
+		ASSERT_TRUE(entityManagerCopy->hasEntity(testEntity1));
+		auto [transform, movement] = entityManagerCopy->getEntityComponents<TransformComponent, MovementComponent>(testEntity1);
+		EXPECT_EQ(transform->pos, TestVector2(10, 20));
+		EXPECT_EQ(movement->move, TestVector2(30, 40));
+		ASSERT_NE(transform1, transform);
+		ASSERT_NE(movement1, movement);
+	}
+	{
+		ASSERT_TRUE(entityManagerCopy->hasEntity(testEntity2));
+		auto [transform, movement] = entityManagerCopy->getEntityComponents<TransformComponent, MovementComponent>(testEntity2);
+		EXPECT_EQ(transform->pos, TestVector2(50, 60));
+		EXPECT_EQ(movement->move, TestVector2(70, 80));
+		ASSERT_NE(transform2, transform);
+		ASSERT_NE(movement2, movement);
+	}
+}
+
+TEST(EntityManager, CloningEntityManagerCopiesComponentsOnlyOnce)
+{
+	using namespace EntityManagerTestInternals;
+
+	auto entityManagerData = PrepareEntityManager();
+	EntityManager& entityManager = entityManagerData->entityManager;
+	int destructionsCount = 0;
+	int copiesCount = 0;
+	int movesCount = 0;
+
+	const auto destructionFn = [&destructionsCount]() { ++destructionsCount; };
+	const auto copyFn = [&copiesCount]() { ++copiesCount; };
+	const auto moveFn = [&movesCount]() {
+		++movesCount;
+	};
+
+	const Entity testEntity1 = entityManager.addEntity();
+	{
+		LifetimeCheckerComponent* lifetimeChecker = entityManager.addComponent<LifetimeCheckerComponent>(testEntity1);
+		lifetimeChecker->destructionCallback = destructionFn;
+		lifetimeChecker->copyCallback = copyFn;
+		lifetimeChecker->moveCallback = moveFn;
+	}
+
+	{
+		auto newEntityManager = entityManager.clone();
+		EXPECT_EQ(destructionsCount, 0);
+		EXPECT_EQ(copiesCount, 1);
+		EXPECT_EQ(movesCount, 0);
+	}
+
+	EXPECT_EQ(destructionsCount, 1);
+	EXPECT_EQ(copiesCount, 1);
+	EXPECT_EQ(movesCount, 0);
 }

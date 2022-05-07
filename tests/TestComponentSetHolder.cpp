@@ -39,7 +39,7 @@ namespace ComponentHolderTestInternal
 		std::function<void()> moveCallback;
 
 		LifetimeCheckerComponent() = default;
-		LifetimeCheckerComponent(LifetimeCheckerComponent& other)
+		LifetimeCheckerComponent(const LifetimeCheckerComponent& other)
 			: destructionCallback(other.destructionCallback)
 			, copyCallback(other.copyCallback)
 			, moveCallback(other.moveCallback)
@@ -47,7 +47,7 @@ namespace ComponentHolderTestInternal
 			copyCallback();
 		}
 
-		LifetimeCheckerComponent operator=(LifetimeCheckerComponent& other)
+		LifetimeCheckerComponent operator=(const LifetimeCheckerComponent& other)
 		{
 			destructionCallback = other.destructionCallback;
 			copyCallback = other.copyCallback;
@@ -56,6 +56,25 @@ namespace ComponentHolderTestInternal
 			copyCallback();
 			return *this;
 		}
+
+		LifetimeCheckerComponent(LifetimeCheckerComponent&& other)
+			: destructionCallback(other.destructionCallback)
+			, copyCallback(other.copyCallback)
+			, moveCallback(other.moveCallback)
+		{
+			moveCallback();
+		}
+
+		LifetimeCheckerComponent operator=(LifetimeCheckerComponent&& other)
+		{
+			destructionCallback = other.destructionCallback;
+			copyCallback = other.copyCallback;
+			moveCallback = other.moveCallback;
+
+			moveCallback();
+			return *this;
+		}
+
 		~LifetimeCheckerComponent() { destructionCallback(); }
 
 		static ComponentType GetTypeId() { return LifetimeCheckerComponentId; };
@@ -126,9 +145,11 @@ TEST(CompoentSetHolder, ComponentsNeverCopiedOrMovedAndAlwaysDestroyed)
 
 	std::array<bool, 2> destroyedObjects{false, false};
 	int copiesCount = 0;
+	int movesCount = 0;
 
 	const auto destructionFn = [&destroyedObjects](int objectIndex) { destroyedObjects[objectIndex] = true; };
 	const auto copyFn = [&copiesCount]() { ++copiesCount; };
+	const auto moveFn = [&movesCount]() { ++movesCount; };
 
 	{
 		auto componentSetHolderData = PrepareComponentSetHolder();
@@ -138,6 +159,7 @@ TEST(CompoentSetHolder, ComponentsNeverCopiedOrMovedAndAlwaysDestroyed)
 			LifetimeCheckerComponent* lifetimeChecker = componentSetHolder.addComponent<LifetimeCheckerComponent>();
 			lifetimeChecker->destructionCallback = [&destructionFn](){ destructionFn(0); };
 			lifetimeChecker->copyCallback = copyFn;
+			lifetimeChecker->moveCallback = moveFn;
 		}
 
 		EXPECT_EQ(false, destroyedObjects[0]);
@@ -154,6 +176,7 @@ TEST(CompoentSetHolder, ComponentsNeverCopiedOrMovedAndAlwaysDestroyed)
 			LifetimeCheckerComponent* lifetimeChecker = componentSetHolder.addComponent<LifetimeCheckerComponent>();
 			lifetimeChecker->destructionCallback = [&destructionFn](){ destructionFn(1); };
 			lifetimeChecker->copyCallback = copyFn;
+			lifetimeChecker->moveCallback = moveFn;
 		}
 
 		EXPECT_EQ(false, destroyedObjects[1]);

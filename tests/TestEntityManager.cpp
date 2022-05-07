@@ -900,9 +900,7 @@ TEST(EntityManager, CloningEntityManagerCopiesComponentsOnlyOnce)
 
 	const auto destructionFn = [&destructionsCount]() { ++destructionsCount; };
 	const auto copyFn = [&copiesCount]() { ++copiesCount; };
-	const auto moveFn = [&movesCount]() {
-		++movesCount;
-	};
+	const auto moveFn = [&movesCount]() { ++movesCount; };
 
 	const Entity testEntity1 = entityManager.addEntity();
 	{

@@ -7,13 +7,19 @@
 
 namespace ComponentHolderTestInternal
 {
-	enum ComponentType { EmptyComponentId, DataComponentId, LifetimeCheckerComponentId };
+	enum ComponentType { EmptyComponentId, DataComponentId, DataComponent2Id, LifetimeCheckerComponentId };
 	using ComponentFactory = RaccoonEcs::ComponentFactoryImpl<ComponentType>;
 	using ComponentSetHolder = RaccoonEcs::ComponentSetHolderImpl<ComponentType>;
 	using TypedComponent = RaccoonEcs::TypedComponentImpl<ComponentType>;
 
 	struct TestVector2
 	{
+		TestVector2() = default;
+		TestVector2(int x, int y)
+			: x(x)
+			, y(y)
+		{}
+
 		int x;
 		int y;
 
@@ -30,6 +36,13 @@ namespace ComponentHolderTestInternal
 		TestVector2 pos;
 
 		static ComponentType GetTypeId() { return DataComponentId; };
+	};
+
+	struct ComponentWithData2
+	{
+		TestVector2 pos;
+
+		static ComponentType GetTypeId() { return DataComponent2Id; };
 	};
 
 	struct LifetimeCheckerComponent
@@ -90,6 +103,7 @@ namespace ComponentHolderTestInternal
 	{
 		inOutFactory.registerComponent<EmptyComponent>();
 		inOutFactory.registerComponent<ComponentWithData>();
+		inOutFactory.registerComponent<ComponentWithData2>();
 		inOutFactory.registerComponent<LifetimeCheckerComponent>();
 	}
 
@@ -214,4 +228,60 @@ TEST(CompoentSetHolder, AllComponentsCanBeCollected)
 			EXPECT_EQ(EmptyComponent::GetTypeId(), components[1].typeId);
 		}
 	}
+}
+
+TEST(CompoentSetHolder, CompoentSetHolderCanBeCloned)
+{
+	using namespace ComponentHolderTestInternal;
+
+	auto componentSetHolderData = PrepareComponentSetHolder();
+	ComponentSetHolder& componentSetHolder = componentSetHolderData->componentSetHolder;
+
+	ComponentWithData* dataComponent1 = componentSetHolder.addComponent<ComponentWithData>();
+	dataComponent1->pos = TestVector2{10, 20};
+	ComponentWithData2* dataComponent2 = componentSetHolder.addComponent<ComponentWithData2>();
+	dataComponent2->pos = TestVector2{30, 40};
+
+	std::unique_ptr<ComponentSetHolder> componentSetHolderCopy = componentSetHolder.clone();
+
+	{
+		auto [data1, data2] = componentSetHolderCopy->getComponents<ComponentWithData, ComponentWithData2>();
+		EXPECT_EQ(data1->pos, TestVector2(10, 20));
+		EXPECT_EQ(data2->pos, TestVector2(30, 40));
+		ASSERT_NE(data1, dataComponent1);
+		ASSERT_NE(data2, dataComponent2);
+	}
+}
+
+TEST(CompoentSetHolder, CloningCompoentSetHolderCopiesComponentsOnlyOnce)
+{
+	using namespace ComponentHolderTestInternal;
+
+	auto componentSetHolderData = PrepareComponentSetHolder();
+	ComponentSetHolder& componentSetHolder = componentSetHolderData->componentSetHolder;
+	int destructionsCount = 0;
+	int copiesCount = 0;
+	int movesCount = 0;
+
+	const auto destructionFn = [&destructionsCount]() { ++destructionsCount; };
+	const auto copyFn = [&copiesCount]() { ++copiesCount; };
+	const auto moveFn = [&movesCount]() { ++movesCount; };
+
+	{
+		LifetimeCheckerComponent* lifetimeChecker = componentSetHolder.addComponent<LifetimeCheckerComponent>();
+		lifetimeChecker->destructionCallback = destructionFn;
+		lifetimeChecker->copyCallback = copyFn;
+		lifetimeChecker->moveCallback = moveFn;
+	}
+
+	{
+		auto newComponentSetHolder = componentSetHolder.clone();
+		EXPECT_EQ(destructionsCount, 0);
+		EXPECT_EQ(copiesCount, 1);
+		EXPECT_EQ(movesCount, 0);
+	}
+
+	EXPECT_EQ(destructionsCount, 1);
+	EXPECT_EQ(copiesCount, 1);
+	EXPECT_EQ(movesCount, 0);
 }

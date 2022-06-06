@@ -16,6 +16,7 @@ set(ECS_INCLUDE_DIR "${TESTS_BASE_DIR}/../include")
 set(BIN_PLATFORM "x64")
 
 add_definitions(-DRACCOON_ECS_DEBUG_CHECKS_ENABLED)
+add_definitions(-DRACCOON_ECS_COPYABLE_COMPONENTS)
 
 # compiler parameters
 if (MSVC)

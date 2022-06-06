@@ -242,10 +242,11 @@ TEST(CompoentSetHolder, CompoentSetHolderCanBeCloned)
 	ComponentWithData2* dataComponent2 = componentSetHolder.addComponent<ComponentWithData2>();
 	dataComponent2->pos = TestVector2{30, 40};
 
-	std::unique_ptr<ComponentSetHolder> componentSetHolderCopy = componentSetHolder.clone();
+	ComponentSetHolder clonedComponentSetHolder(componentSetHolderData->componentFactory);
+	clonedComponentSetHolder.overrideBy(componentSetHolder);
 
 	{
-		auto [data1, data2] = componentSetHolderCopy->getComponents<ComponentWithData, ComponentWithData2>();
+		auto [data1, data2] = clonedComponentSetHolder.getComponents<ComponentWithData, ComponentWithData2>();
 		EXPECT_EQ(data1->pos, TestVector2(10, 20));
 		EXPECT_EQ(data2->pos, TestVector2(30, 40));
 		ASSERT_NE(data1, dataComponent1);
@@ -275,7 +276,8 @@ TEST(CompoentSetHolder, CloningCompoentSetHolderCopiesComponentsOnlyOnce)
 	}
 
 	{
-		auto newComponentSetHolder = componentSetHolder.clone();
+		ComponentSetHolder newComponentSetHolder(componentSetHolderData->componentFactory);
+		newComponentSetHolder.overrideBy(componentSetHolder);
 		EXPECT_EQ(destructionsCount, 0);
 		EXPECT_EQ(copiesCount, 1);
 		EXPECT_EQ(movesCount, 0);

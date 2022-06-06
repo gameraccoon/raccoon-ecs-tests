@@ -868,19 +868,20 @@ TEST(EntityManager, EntityManagerCanBeCloned)
 	MovementComponent* movement2 = entityManager.addComponent<MovementComponent>(testEntity2);
 	movement2->move = TestVector2{70, 80};
 
-	std::unique_ptr<EntityManager> entityManagerCopy = entityManager.clone();
+	EntityManager entityManagerCopy(entityManagerData->componentFactory, entityManagerData->entityGenerator);
+	entityManagerCopy.overrideBy(entityManager);
 
 	{
-		ASSERT_TRUE(entityManagerCopy->hasEntity(testEntity1));
-		auto [transform, movement] = entityManagerCopy->getEntityComponents<TransformComponent, MovementComponent>(testEntity1);
+		ASSERT_TRUE(entityManagerCopy.hasEntity(testEntity1));
+		auto [transform, movement] = entityManagerCopy.getEntityComponents<TransformComponent, MovementComponent>(testEntity1);
 		EXPECT_EQ(transform->pos, TestVector2(10, 20));
 		EXPECT_EQ(movement->move, TestVector2(30, 40));
 		ASSERT_NE(transform1, transform);
 		ASSERT_NE(movement1, movement);
 	}
 	{
-		ASSERT_TRUE(entityManagerCopy->hasEntity(testEntity2));
-		auto [transform, movement] = entityManagerCopy->getEntityComponents<TransformComponent, MovementComponent>(testEntity2);
+		ASSERT_TRUE(entityManagerCopy.hasEntity(testEntity2));
+		auto [transform, movement] = entityManagerCopy.getEntityComponents<TransformComponent, MovementComponent>(testEntity2);
 		EXPECT_EQ(transform->pos, TestVector2(50, 60));
 		EXPECT_EQ(movement->move, TestVector2(70, 80));
 		ASSERT_NE(transform2, transform);
@@ -911,7 +912,8 @@ TEST(EntityManager, CloningEntityManagerCopiesComponentsOnlyOnce)
 	}
 
 	{
-		auto newEntityManager = entityManager.clone();
+		EntityManager newEntityManager(entityManagerData->componentFactory, entityManagerData->entityGenerator);
+		newEntityManager.overrideBy(entityManager);
 		EXPECT_EQ(destructionsCount, 0);
 		EXPECT_EQ(copiesCount, 1);
 		EXPECT_EQ(movesCount, 0);

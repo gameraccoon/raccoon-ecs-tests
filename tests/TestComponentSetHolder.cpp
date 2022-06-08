@@ -247,10 +247,12 @@ TEST(CompoentSetHolder, CompoentSetHolderCanBeCloned)
 
 	{
 		auto [data1, data2] = clonedComponentSetHolder.getComponents<ComponentWithData, ComponentWithData2>();
+		ASSERT_NE(data1, nullptr);
+		ASSERT_NE(data2, nullptr);
 		EXPECT_EQ(data1->pos, TestVector2(10, 20));
 		EXPECT_EQ(data2->pos, TestVector2(30, 40));
-		ASSERT_NE(data1, dataComponent1);
-		ASSERT_NE(data2, dataComponent2);
+		EXPECT_NE(data1, dataComponent1);
+		EXPECT_NE(data2, dataComponent2);
 	}
 }
 
@@ -286,4 +288,70 @@ TEST(CompoentSetHolder, CloningCompoentSetHolderCopiesComponentsOnlyOnce)
 	EXPECT_EQ(destructionsCount, 1);
 	EXPECT_EQ(copiesCount, 1);
 	EXPECT_EQ(movesCount, 0);
+}
+
+TEST(CompoentSetHolder, CloningComponentSetHolderKeepsPreviousInstanceUntouched)
+{
+	using namespace ComponentHolderTestInternal;
+
+	auto componentSetHolderData = PrepareComponentSetHolder();
+
+	ComponentSetHolder& componentSetHolder = componentSetHolderData->componentSetHolder;
+	{
+		ComponentWithData* dataComponent1 = componentSetHolder.addComponent<ComponentWithData>();
+		dataComponent1->pos = TestVector2{10, 20};
+		ComponentWithData2* dataComponent2 = componentSetHolder.addComponent<ComponentWithData2>();
+		dataComponent2->pos = TestVector2{30, 40};
+	}
+
+	ComponentSetHolder newComponentSetHolder(componentSetHolderData->componentFactory);
+	{
+		ComponentWithData* dataComponent1 = newComponentSetHolder.addComponent<ComponentWithData>();
+		dataComponent1->pos = TestVector2{50, 60};
+		ComponentWithData2* dataComponent2 = newComponentSetHolder.addComponent<ComponentWithData2>();
+		dataComponent2->pos = TestVector2{70, 80};
+	}
+
+	newComponentSetHolder.overrideBy(componentSetHolder);
+
+	{
+		auto [data1, data2] = componentSetHolder.getComponents<ComponentWithData, ComponentWithData2>();
+		ASSERT_NE(data1, nullptr);
+		ASSERT_NE(data2, nullptr);
+		EXPECT_EQ(data1->pos, TestVector2(10, 20));
+		EXPECT_EQ(data2->pos, TestVector2(30, 40));
+	}
+}
+
+TEST(CompoentSetHolder, CloningComponentSetHolderOverridesPreviousComponents)
+{
+	using namespace ComponentHolderTestInternal;
+
+	auto componentSetHolderData = PrepareComponentSetHolder();
+
+	ComponentSetHolder& componentSetHolder = componentSetHolderData->componentSetHolder;
+	{
+		ComponentWithData* dataComponent1 = componentSetHolder.addComponent<ComponentWithData>();
+		dataComponent1->pos = TestVector2{10, 20};
+		ComponentWithData2* dataComponent2 = componentSetHolder.addComponent<ComponentWithData2>();
+		dataComponent2->pos = TestVector2{30, 40};
+	}
+
+	ComponentSetHolder newComponentSetHolder(componentSetHolderData->componentFactory);
+	{
+		ComponentWithData* dataComponent1 = newComponentSetHolder.addComponent<ComponentWithData>();
+		dataComponent1->pos = TestVector2{50, 60};
+		ComponentWithData2* dataComponent2 = newComponentSetHolder.addComponent<ComponentWithData2>();
+		dataComponent2->pos = TestVector2{70, 80};
+	}
+
+	newComponentSetHolder.overrideBy(componentSetHolder);
+
+	{
+		auto [data1, data2] = newComponentSetHolder.getComponents<ComponentWithData, ComponentWithData2>();
+		ASSERT_NE(data1, nullptr);
+		ASSERT_NE(data2, nullptr);
+		EXPECT_EQ(data1->pos, TestVector2(10, 20));
+		EXPECT_EQ(data2->pos, TestVector2(30, 40));
+	}
 }

@@ -923,3 +923,105 @@ TEST(EntityManager, CloningEntityManagerCopiesComponentsOnlyOnce)
 	EXPECT_EQ(copiesCount, 1);
 	EXPECT_EQ(movesCount, 0);
 }
+
+TEST(EntityManager, CloningEntityManagerKeepsOldInstanceUntouched)
+{
+	using namespace EntityManagerTestInternals;
+
+	auto entityManagerData = PrepareEntityManager();
+	EntityManager& entityManager = entityManagerData->entityManager;
+
+	const Entity testEntity1 = entityManager.addEntity();
+	{
+		MovementComponent* copiedFromMovement = entityManager.addComponent<MovementComponent>(testEntity1);
+		copiedFromMovement->move.x = 100;
+		copiedFromMovement->move.y = 200;
+	}
+
+	EntityManager newEntityManager(entityManagerData->componentFactory, entityManagerData->entityGenerator);
+
+	const Entity testEntity2 = newEntityManager.addEntity();
+	{
+		MovementComponent* oldMovement = newEntityManager.addComponent<MovementComponent>(testEntity2);
+		oldMovement->move.x = 40;
+		oldMovement->move.y = 50;
+	}
+
+
+	newEntityManager.overrideBy(entityManager);
+
+	ASSERT_TRUE(entityManager.hasEntity(testEntity1));
+	EXPECT_FALSE(entityManager.hasEntity(testEntity2));
+
+	auto [copiedFromMovement] = entityManager.getEntityComponents<MovementComponent>(testEntity1);
+	EXPECT_EQ(copiedFromMovement->move.x, 100);
+	EXPECT_EQ(copiedFromMovement->move.y, 200);
+}
+
+TEST(EntityManager, CloningEntityManagerOverridesPreviousEntities)
+{
+	using namespace EntityManagerTestInternals;
+
+	auto entityManagerData = PrepareEntityManager();
+	EntityManager& entityManager = entityManagerData->entityManager;
+
+	const Entity testEntity1 = entityManager.addEntity();
+	{
+		MovementComponent* copiedFromMovement = entityManager.addComponent<MovementComponent>(testEntity1);
+		copiedFromMovement->move.x = 100;
+		copiedFromMovement->move.y = 200;
+	}
+
+	EntityManager newEntityManager(entityManagerData->componentFactory, entityManagerData->entityGenerator);
+
+	const Entity testEntity2 = newEntityManager.addEntity();
+	{
+		MovementComponent* oldMovement = newEntityManager.addComponent<MovementComponent>(testEntity2);
+		oldMovement->move.x = 40;
+		oldMovement->move.y = 50;
+	}
+
+	newEntityManager.overrideBy(entityManager);
+
+	ASSERT_TRUE(newEntityManager.hasEntity(testEntity1));
+	EXPECT_FALSE(newEntityManager.hasEntity(testEntity2));
+
+	auto [newMovement] = newEntityManager.getEntityComponents<MovementComponent>(testEntity1);
+	EXPECT_EQ(newMovement->move.x, 100);
+	EXPECT_EQ(newMovement->move.y, 200);
+}
+
+TEST(EntityManager, CloningEntityManagerOverridesPreviousIndexes)
+{
+	using namespace EntityManagerTestInternals;
+
+	auto entityManagerData = PrepareEntityManager();
+	EntityManager& entityManager = entityManagerData->entityManager;
+
+	const Entity testEntity1 = entityManager.addEntity();
+	{
+		MovementComponent* copiedFromMovement = entityManager.addComponent<MovementComponent>(testEntity1);
+		copiedFromMovement->move.x = 100;
+		copiedFromMovement->move.y = 200;
+	}
+
+	EntityManager newEntityManager(entityManagerData->componentFactory, entityManagerData->entityGenerator);
+
+	const Entity testEntity2 = newEntityManager.addEntity();
+	{
+		MovementComponent* oldMovement = newEntityManager.addComponent<MovementComponent>(testEntity2);
+		oldMovement->move.x = 40;
+		oldMovement->move.y = 50;
+	}
+	newEntityManager.initIndex<MovementComponent>();
+
+	newEntityManager.overrideBy(entityManager);
+
+	ASSERT_TRUE(newEntityManager.hasEntity(testEntity1));
+
+	std::vector<std::tuple<const MovementComponent*>> resultComponents;
+	newEntityManager.getComponents<const MovementComponent>(resultComponents);
+	ASSERT_EQ(resultComponents.size(), static_cast<size_t>(1));
+	EXPECT_EQ(std::get<0>(resultComponents[0])->move.x, 100);
+	EXPECT_EQ(std::get<0>(resultComponents[0])->move.y, 200);
+}

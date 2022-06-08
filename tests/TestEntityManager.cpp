@@ -876,16 +876,16 @@ TEST(EntityManager, EntityManagerCanBeCloned)
 		auto [transform, movement] = entityManagerCopy.getEntityComponents<TransformComponent, MovementComponent>(testEntity1);
 		EXPECT_EQ(transform->pos, TestVector2(10, 20));
 		EXPECT_EQ(movement->move, TestVector2(30, 40));
-		ASSERT_NE(transform1, transform);
-		ASSERT_NE(movement1, movement);
+		EXPECT_NE(transform1, transform);
+		EXPECT_NE(movement1, movement);
 	}
 	{
 		ASSERT_TRUE(entityManagerCopy.hasEntity(testEntity2));
 		auto [transform, movement] = entityManagerCopy.getEntityComponents<TransformComponent, MovementComponent>(testEntity2);
 		EXPECT_EQ(transform->pos, TestVector2(50, 60));
 		EXPECT_EQ(movement->move, TestVector2(70, 80));
-		ASSERT_NE(transform2, transform);
-		ASSERT_NE(movement2, movement);
+		EXPECT_NE(transform2, transform);
+		EXPECT_NE(movement2, movement);
 	}
 }
 
@@ -946,7 +946,6 @@ TEST(EntityManager, CloningEntityManagerKeepsOldInstanceUntouched)
 		oldMovement->move.x = 40;
 		oldMovement->move.y = 50;
 	}
-
 
 	newEntityManager.overrideBy(entityManager);
 
@@ -1016,6 +1015,272 @@ TEST(EntityManager, CloningEntityManagerOverridesPreviousIndexes)
 	newEntityManager.initIndex<MovementComponent>();
 
 	newEntityManager.overrideBy(entityManager);
+
+	ASSERT_TRUE(newEntityManager.hasEntity(testEntity1));
+
+	std::vector<std::tuple<const MovementComponent*>> resultComponents;
+	newEntityManager.getComponents<const MovementComponent>(resultComponents);
+	ASSERT_EQ(resultComponents.size(), static_cast<size_t>(1));
+	EXPECT_EQ(std::get<0>(resultComponents[0])->move.x, 100);
+	EXPECT_EQ(std::get<0>(resultComponents[0])->move.y, 200);
+}
+
+TEST(EntityManager, EntityManagerCanBeMoveConstructed)
+{
+	using namespace EntityManagerTestInternals;
+
+	auto entityManagerData = PrepareEntityManager();
+	EntityManager& entityManager = entityManagerData->entityManager;
+
+	const Entity testEntity1 = entityManager.addEntity();
+	TransformComponent* transform1 = entityManager.addComponent<TransformComponent>(testEntity1);
+	transform1->pos = TestVector2{10, 20};
+	MovementComponent* movement1 = entityManager.addComponent<MovementComponent>(testEntity1);
+	movement1->move = TestVector2{30, 40};
+
+	const Entity testEntity2 = entityManager.addEntity();
+	TransformComponent* transform2 = entityManager.addComponent<TransformComponent>(testEntity2);
+	transform2->pos = TestVector2{50, 60};
+	MovementComponent* movement2 = entityManager.addComponent<MovementComponent>(testEntity2);
+	movement2->move = TestVector2{70, 80};
+
+	EntityManager newEntityManager(std::move(entityManager));
+
+	{
+		ASSERT_TRUE(newEntityManager.hasEntity(testEntity1));
+		auto [transform, movement] = newEntityManager.getEntityComponents<TransformComponent, MovementComponent>(testEntity1);
+		EXPECT_EQ(transform->pos, TestVector2(10, 20));
+		EXPECT_EQ(movement->move, TestVector2(30, 40));
+		EXPECT_EQ(transform1, transform);
+		EXPECT_EQ(movement1, movement);
+	}
+	{
+		ASSERT_TRUE(newEntityManager.hasEntity(testEntity2));
+		auto [transform, movement] = newEntityManager.getEntityComponents<TransformComponent, MovementComponent>(testEntity2);
+		EXPECT_EQ(transform->pos, TestVector2(50, 60));
+		EXPECT_EQ(movement->move, TestVector2(70, 80));
+		EXPECT_EQ(transform2, transform);
+		EXPECT_EQ(movement2, movement);
+	}
+}
+
+TEST(EntityManager, MoveConstructingEntityManagerDoesNotMoveComponentsIndividually)
+{
+	using namespace EntityManagerTestInternals;
+
+	auto entityManagerData = PrepareEntityManager();
+	EntityManager& entityManager = entityManagerData->entityManager;
+	int destructionsCount = 0;
+	int copiesCount = 0;
+	int movesCount = 0;
+
+	const auto destructionFn = [&destructionsCount]() { ++destructionsCount; };
+	const auto copyFn = [&copiesCount]() { ++copiesCount; };
+	const auto moveFn = [&movesCount]() { ++movesCount; };
+
+	const Entity testEntity1 = entityManager.addEntity();
+	{
+		LifetimeCheckerComponent* lifetimeChecker = entityManager.addComponent<LifetimeCheckerComponent>(testEntity1);
+		lifetimeChecker->destructionCallback = destructionFn;
+		lifetimeChecker->copyCallback = copyFn;
+		lifetimeChecker->moveCallback = moveFn;
+	}
+
+	{
+		EntityManager newEntityManager(std::move(entityManager));
+		EXPECT_EQ(destructionsCount, 0);
+		EXPECT_EQ(copiesCount, 0);
+		EXPECT_EQ(movesCount, 0);
+	}
+
+	EXPECT_EQ(destructionsCount, 1);
+	EXPECT_EQ(copiesCount, 0);
+	EXPECT_EQ(movesCount, 0);
+}
+
+TEST(EntityManager, MoveConstructingEntityManagerClearsMovedFromEntity)
+{
+	using namespace EntityManagerTestInternals;
+
+	auto entityManagerData = PrepareEntityManager();
+	EntityManager& entityManager = entityManagerData->entityManager;
+
+	const Entity testEntity1 = entityManager.addEntity();
+	{
+		MovementComponent* copiedFromMovement = entityManager.addComponent<MovementComponent>(testEntity1);
+		copiedFromMovement->move.x = 100;
+		copiedFromMovement->move.y = 200;
+	}
+
+	EntityManager newEntityManager(std::move(entityManager));
+
+	EXPECT_FALSE(entityManager.hasEntity(testEntity1));
+	EXPECT_EQ(entityManager.getMatchingEntitiesCount<MovementComponent>(), static_cast<size_t>(0));
+}
+
+TEST(EntityManager, EntityManagerCanMoveAssigned)
+{
+	using namespace EntityManagerTestInternals;
+
+	auto entityManagerData = PrepareEntityManager();
+	EntityManager& entityManager = entityManagerData->entityManager;
+
+	const Entity testEntity1 = entityManager.addEntity();
+	TransformComponent* transform1 = entityManager.addComponent<TransformComponent>(testEntity1);
+	transform1->pos = TestVector2{10, 20};
+	MovementComponent* movement1 = entityManager.addComponent<MovementComponent>(testEntity1);
+	movement1->move = TestVector2{30, 40};
+
+	const Entity testEntity2 = entityManager.addEntity();
+	TransformComponent* transform2 = entityManager.addComponent<TransformComponent>(testEntity2);
+	transform2->pos = TestVector2{50, 60};
+	MovementComponent* movement2 = entityManager.addComponent<MovementComponent>(testEntity2);
+	movement2->move = TestVector2{70, 80};
+
+	EntityManager entityManagerCopy(entityManagerData->componentFactory, entityManagerData->entityGenerator);
+	entityManagerCopy = std::move(entityManager);
+
+	{
+		ASSERT_TRUE(entityManagerCopy.hasEntity(testEntity1));
+		auto [transform, movement] = entityManagerCopy.getEntityComponents<TransformComponent, MovementComponent>(testEntity1);
+		EXPECT_EQ(transform->pos, TestVector2(10, 20));
+		EXPECT_EQ(movement->move, TestVector2(30, 40));
+		EXPECT_EQ(transform1, transform);
+		EXPECT_EQ(movement1, movement);
+	}
+	{
+		ASSERT_TRUE(entityManagerCopy.hasEntity(testEntity2));
+		auto [transform, movement] = entityManagerCopy.getEntityComponents<TransformComponent, MovementComponent>(testEntity2);
+		EXPECT_EQ(transform->pos, TestVector2(50, 60));
+		EXPECT_EQ(movement->move, TestVector2(70, 80));
+		EXPECT_EQ(transform2, transform);
+		EXPECT_EQ(movement2, movement);
+	}
+}
+
+TEST(EntityManager, MoveAssigningEntityManagerDoesNotMoveComponentsIndividually)
+{
+	using namespace EntityManagerTestInternals;
+
+	auto entityManagerData = PrepareEntityManager();
+	EntityManager& entityManager = entityManagerData->entityManager;
+	int destructionsCount = 0;
+	int copiesCount = 0;
+	int movesCount = 0;
+
+	const auto destructionFn = [&destructionsCount]() { ++destructionsCount; };
+	const auto copyFn = [&copiesCount]() { ++copiesCount; };
+	const auto moveFn = [&movesCount]() { ++movesCount; };
+
+	const Entity testEntity1 = entityManager.addEntity();
+	{
+		LifetimeCheckerComponent* lifetimeChecker = entityManager.addComponent<LifetimeCheckerComponent>(testEntity1);
+		lifetimeChecker->destructionCallback = destructionFn;
+		lifetimeChecker->copyCallback = copyFn;
+		lifetimeChecker->moveCallback = moveFn;
+	}
+
+	{
+		EntityManager newEntityManager(entityManagerData->componentFactory, entityManagerData->entityGenerator);
+		newEntityManager = std::move(entityManager);
+		EXPECT_EQ(destructionsCount, 0);
+		EXPECT_EQ(copiesCount, 0);
+		EXPECT_EQ(movesCount, 0);
+	}
+
+	EXPECT_EQ(destructionsCount, 1);
+	EXPECT_EQ(copiesCount, 0);
+	EXPECT_EQ(movesCount, 0);
+}
+
+TEST(EntityManager, MoveAssigningEntityManagerClearsMovedFromEntity)
+{
+	using namespace EntityManagerTestInternals;
+
+	auto entityManagerData = PrepareEntityManager();
+	EntityManager& entityManager = entityManagerData->entityManager;
+
+	const Entity testEntity1 = entityManager.addEntity();
+	{
+		MovementComponent* copiedFromMovement = entityManager.addComponent<MovementComponent>(testEntity1);
+		copiedFromMovement->move.x = 100;
+		copiedFromMovement->move.y = 200;
+	}
+
+	EntityManager newEntityManager(entityManagerData->componentFactory, entityManagerData->entityGenerator);
+
+	const Entity testEntity2 = newEntityManager.addEntity();
+	{
+		MovementComponent* oldMovement = newEntityManager.addComponent<MovementComponent>(testEntity2);
+		oldMovement->move.x = 40;
+		oldMovement->move.y = 50;
+	}
+
+	newEntityManager = std::move(entityManager);
+
+	EXPECT_FALSE(entityManager.hasEntity(testEntity1));
+	EXPECT_FALSE(entityManager.hasEntity(testEntity2));
+	EXPECT_EQ(entityManager.getMatchingEntitiesCount<MovementComponent>(), static_cast<size_t>(0));
+}
+
+TEST(EntityManager, MoveAssigningEntityManagerOverridesPreviousEntities)
+{
+	using namespace EntityManagerTestInternals;
+
+	auto entityManagerData = PrepareEntityManager();
+	EntityManager& entityManager = entityManagerData->entityManager;
+
+	const Entity testEntity1 = entityManager.addEntity();
+	{
+		MovementComponent* copiedFromMovement = entityManager.addComponent<MovementComponent>(testEntity1);
+		copiedFromMovement->move.x = 100;
+		copiedFromMovement->move.y = 200;
+	}
+
+	EntityManager newEntityManager(entityManagerData->componentFactory, entityManagerData->entityGenerator);
+
+	const Entity testEntity2 = newEntityManager.addEntity();
+	{
+		MovementComponent* oldMovement = newEntityManager.addComponent<MovementComponent>(testEntity2);
+		oldMovement->move.x = 40;
+		oldMovement->move.y = 50;
+	}
+
+	newEntityManager = std::move(entityManager);
+
+	ASSERT_TRUE(newEntityManager.hasEntity(testEntity1));
+	EXPECT_FALSE(newEntityManager.hasEntity(testEntity2));
+
+	auto [newMovement] = newEntityManager.getEntityComponents<MovementComponent>(testEntity1);
+	EXPECT_EQ(newMovement->move.x, 100);
+	EXPECT_EQ(newMovement->move.y, 200);
+}
+
+TEST(EntityManager, MoveAssigningEntityManagerOverridesPreviousIndexes)
+{
+	using namespace EntityManagerTestInternals;
+
+	auto entityManagerData = PrepareEntityManager();
+	EntityManager& entityManager = entityManagerData->entityManager;
+
+	const Entity testEntity1 = entityManager.addEntity();
+	{
+		MovementComponent* copiedFromMovement = entityManager.addComponent<MovementComponent>(testEntity1);
+		copiedFromMovement->move.x = 100;
+		copiedFromMovement->move.y = 200;
+	}
+
+	EntityManager newEntityManager(entityManagerData->componentFactory, entityManagerData->entityGenerator);
+
+	const Entity testEntity2 = newEntityManager.addEntity();
+	{
+		MovementComponent* oldMovement = newEntityManager.addComponent<MovementComponent>(testEntity2);
+		oldMovement->move.x = 40;
+		oldMovement->move.y = 50;
+	}
+	newEntityManager.initIndex<MovementComponent>();
+
+	newEntityManager = std::move(entityManager);
 
 	ASSERT_TRUE(newEntityManager.hasEntity(testEntity1));
 

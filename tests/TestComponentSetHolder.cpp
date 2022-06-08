@@ -355,3 +355,207 @@ TEST(CompoentSetHolder, CloningComponentSetHolderOverridesPreviousComponents)
 		EXPECT_EQ(data2->pos, TestVector2(30, 40));
 	}
 }
+
+TEST(CompoentSetHolder, CompoentSetHolderCanBeMoveConstructed)
+{
+	using namespace ComponentHolderTestInternal;
+
+	auto componentSetHolderData = PrepareComponentSetHolder();
+	ComponentSetHolder& componentSetHolder = componentSetHolderData->componentSetHolder;
+
+	ComponentWithData* dataComponent1 = componentSetHolder.addComponent<ComponentWithData>();
+	dataComponent1->pos = TestVector2{10, 20};
+	ComponentWithData2* dataComponent2 = componentSetHolder.addComponent<ComponentWithData2>();
+	dataComponent2->pos = TestVector2{30, 40};
+
+	ComponentSetHolder clonedComponentSetHolder(std::move(componentSetHolder));
+
+	{
+		auto [data1, data2] = clonedComponentSetHolder.getComponents<ComponentWithData, ComponentWithData2>();
+		ASSERT_NE(data1, nullptr);
+		ASSERT_NE(data2, nullptr);
+		EXPECT_EQ(data1->pos, TestVector2(10, 20));
+		EXPECT_EQ(data2->pos, TestVector2(30, 40));
+		EXPECT_EQ(data1, dataComponent1);
+		EXPECT_EQ(data2, dataComponent2);
+	}
+}
+
+TEST(CompoentSetHolder, MoveConstructingCompoentSetHolderDoesNotMoveComponentsIndividually)
+{
+	using namespace ComponentHolderTestInternal;
+
+	auto componentSetHolderData = PrepareComponentSetHolder();
+	ComponentSetHolder& componentSetHolder = componentSetHolderData->componentSetHolder;
+	int destructionsCount = 0;
+	int copiesCount = 0;
+	int movesCount = 0;
+
+	const auto destructionFn = [&destructionsCount]() { ++destructionsCount; };
+	const auto copyFn = [&copiesCount]() { ++copiesCount; };
+	const auto moveFn = [&movesCount]() { ++movesCount; };
+
+	{
+		LifetimeCheckerComponent* lifetimeChecker = componentSetHolder.addComponent<LifetimeCheckerComponent>();
+		lifetimeChecker->destructionCallback = destructionFn;
+		lifetimeChecker->copyCallback = copyFn;
+		lifetimeChecker->moveCallback = moveFn;
+	}
+
+	{
+		ComponentSetHolder newComponentSetHolder(std::move(componentSetHolder));
+		EXPECT_EQ(destructionsCount, 0);
+		EXPECT_EQ(copiesCount, 0);
+		EXPECT_EQ(movesCount, 0);
+	}
+
+	EXPECT_EQ(destructionsCount, 1);
+	EXPECT_EQ(copiesCount, 0);
+	EXPECT_EQ(movesCount, 0);
+}
+
+TEST(CompoentSetHolder, MoveConstructingComponentSetHolderClearsMovedFromInstance)
+{
+	using namespace ComponentHolderTestInternal;
+
+	auto componentSetHolderData = PrepareComponentSetHolder();
+
+	ComponentSetHolder& componentSetHolder = componentSetHolderData->componentSetHolder;
+	{
+		ComponentWithData* dataComponent1 = componentSetHolder.addComponent<ComponentWithData>();
+		dataComponent1->pos = TestVector2{10, 20};
+		ComponentWithData2* dataComponent2 = componentSetHolder.addComponent<ComponentWithData2>();
+		dataComponent2->pos = TestVector2{30, 40};
+	}
+
+	ComponentSetHolder newComponentSetHolder(std::move(componentSetHolder));
+
+	{
+		auto [data1, data2] = componentSetHolder.getComponents<ComponentWithData, ComponentWithData2>();
+		EXPECT_EQ(data1, nullptr);
+		EXPECT_EQ(data2, nullptr);
+	}
+}
+
+TEST(CompoentSetHolder, CompoentSetHolderCanBeMoveAssigned)
+{
+	using namespace ComponentHolderTestInternal;
+
+	auto componentSetHolderData = PrepareComponentSetHolder();
+	ComponentSetHolder& componentSetHolder = componentSetHolderData->componentSetHolder;
+
+	ComponentWithData* dataComponent1 = componentSetHolder.addComponent<ComponentWithData>();
+	dataComponent1->pos = TestVector2{10, 20};
+	ComponentWithData2* dataComponent2 = componentSetHolder.addComponent<ComponentWithData2>();
+	dataComponent2->pos = TestVector2{30, 40};
+
+	ComponentSetHolder clonedComponentSetHolder(componentSetHolderData->componentFactory);
+	clonedComponentSetHolder = std::move(componentSetHolder);
+
+	{
+		auto [data1, data2] = clonedComponentSetHolder.getComponents<ComponentWithData, ComponentWithData2>();
+		ASSERT_NE(data1, nullptr);
+		ASSERT_NE(data2, nullptr);
+		EXPECT_EQ(data1->pos, TestVector2(10, 20));
+		EXPECT_EQ(data2->pos, TestVector2(30, 40));
+		EXPECT_EQ(data1, dataComponent1);
+		EXPECT_EQ(data2, dataComponent2);
+	}
+}
+
+TEST(CompoentSetHolder, MoveAssigningCompoentSetHolderDoesNotMoveComponentsIndividually)
+{
+	using namespace ComponentHolderTestInternal;
+
+	auto componentSetHolderData = PrepareComponentSetHolder();
+	ComponentSetHolder& componentSetHolder = componentSetHolderData->componentSetHolder;
+	int destructionsCount = 0;
+	int copiesCount = 0;
+	int movesCount = 0;
+
+	const auto destructionFn = [&destructionsCount]() { ++destructionsCount; };
+	const auto copyFn = [&copiesCount]() { ++copiesCount; };
+	const auto moveFn = [&movesCount]() { ++movesCount; };
+
+	{
+		LifetimeCheckerComponent* lifetimeChecker = componentSetHolder.addComponent<LifetimeCheckerComponent>();
+		lifetimeChecker->destructionCallback = destructionFn;
+		lifetimeChecker->copyCallback = copyFn;
+		lifetimeChecker->moveCallback = moveFn;
+	}
+
+	{
+		ComponentSetHolder newComponentSetHolder = std::move(componentSetHolder);
+		EXPECT_EQ(destructionsCount, 0);
+		EXPECT_EQ(copiesCount, 0);
+		EXPECT_EQ(movesCount, 0);
+	}
+
+	EXPECT_EQ(destructionsCount, 1);
+	EXPECT_EQ(copiesCount, 0);
+	EXPECT_EQ(movesCount, 0);
+}
+
+TEST(CompoentSetHolder, MoveAssigningComponentSetHolderClearsMovedFromInstance)
+{
+	using namespace ComponentHolderTestInternal;
+
+	auto componentSetHolderData = PrepareComponentSetHolder();
+
+	ComponentSetHolder& componentSetHolder = componentSetHolderData->componentSetHolder;
+	{
+		ComponentWithData* dataComponent1 = componentSetHolder.addComponent<ComponentWithData>();
+		dataComponent1->pos = TestVector2{10, 20};
+		ComponentWithData2* dataComponent2 = componentSetHolder.addComponent<ComponentWithData2>();
+		dataComponent2->pos = TestVector2{30, 40};
+	}
+
+	ComponentSetHolder newComponentSetHolder(componentSetHolderData->componentFactory);
+	{
+		ComponentWithData* dataComponent1 = newComponentSetHolder.addComponent<ComponentWithData>();
+		dataComponent1->pos = TestVector2{50, 60};
+		ComponentWithData2* dataComponent2 = newComponentSetHolder.addComponent<ComponentWithData2>();
+		dataComponent2->pos = TestVector2{70, 80};
+	}
+
+	newComponentSetHolder = std::move(componentSetHolder);
+
+	{
+		auto [data1, data2] = componentSetHolder.getComponents<ComponentWithData, ComponentWithData2>();
+		ASSERT_EQ(data1, nullptr);
+		ASSERT_EQ(data2, nullptr);
+	}
+}
+
+TEST(CompoentSetHolder, MoveAssigningComponentSetHolderOverridesPreviousComponents)
+{
+	using namespace ComponentHolderTestInternal;
+
+	auto componentSetHolderData = PrepareComponentSetHolder();
+
+	ComponentSetHolder& componentSetHolder = componentSetHolderData->componentSetHolder;
+	{
+		ComponentWithData* dataComponent1 = componentSetHolder.addComponent<ComponentWithData>();
+		dataComponent1->pos = TestVector2{10, 20};
+		ComponentWithData2* dataComponent2 = componentSetHolder.addComponent<ComponentWithData2>();
+		dataComponent2->pos = TestVector2{30, 40};
+	}
+
+	ComponentSetHolder newComponentSetHolder(componentSetHolderData->componentFactory);
+	{
+		ComponentWithData* dataComponent1 = newComponentSetHolder.addComponent<ComponentWithData>();
+		dataComponent1->pos = TestVector2{50, 60};
+		ComponentWithData2* dataComponent2 = newComponentSetHolder.addComponent<ComponentWithData2>();
+		dataComponent2->pos = TestVector2{70, 80};
+	}
+
+	newComponentSetHolder = std::move(componentSetHolder);
+
+	{
+		auto [data1, data2] = newComponentSetHolder.getComponents<ComponentWithData, ComponentWithData2>();
+		ASSERT_NE(data1, nullptr);
+		ASSERT_NE(data2, nullptr);
+		EXPECT_EQ(data1->pos, TestVector2(10, 20));
+		EXPECT_EQ(data2->pos, TestVector2(30, 40));
+	}
+}

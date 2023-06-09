@@ -1290,3 +1290,106 @@ TEST(EntityManager, MoveAssigningEntityManagerOverridesPreviousIndexes)
 	EXPECT_EQ(std::get<0>(resultComponents[0])->move.x, 100);
 	EXPECT_EQ(std::get<0>(resultComponents[0])->move.y, 200);
 }
+
+TEST(EntityManager, CheckForCorruptingIndexes_RemoveEntityInIndexWithLastEntityInIndex)
+{
+	using namespace EntityManagerTestInternals;
+
+	auto entityManagerData = PrepareEntityManager();
+	EntityManager& entityManager = entityManagerData->entityManager;
+
+	const Entity testEntity1 = entityManager.addEntity();
+	{
+		MovementComponent* move = entityManager.addComponent<MovementComponent>(testEntity1);
+		move->move.x = 100;
+		move->move.y = 200;
+	}
+
+	const Entity testEntity2 = entityManager.addEntity();
+	{
+		MovementComponent* move = entityManager.addComponent<MovementComponent>(testEntity2);
+		move->move.x = 300;
+		move->move.y = 400;
+	}
+
+	entityManager.initIndex<MovementComponent>();
+
+	entityManager.removeEntity(testEntity1);
+
+	std::vector<std::tuple<const MovementComponent*>> resultComponents;
+	entityManager.getComponents<const MovementComponent>(resultComponents);
+	ASSERT_EQ(resultComponents.size(), static_cast<size_t>(1));
+	EXPECT_EQ(std::get<0>(resultComponents[0])->move.x, 300);
+	EXPECT_EQ(std::get<0>(resultComponents[0])->move.y, 400);
+}
+
+TEST(EntityManager, CheckForCorruptingIndexes_RemoveEntityInIndexWithLastEntityNotInIndex)
+{
+	using namespace EntityManagerTestInternals;
+
+	auto entityManagerData = PrepareEntityManager();
+	EntityManager& entityManager = entityManagerData->entityManager;
+
+	const Entity testEntity1 = entityManager.addEntity();
+	{
+		MovementComponent* move = entityManager.addComponent<MovementComponent>(testEntity1);
+		move->move.x = 100;
+		move->move.y = 200;
+	}
+
+	[[maybe_unused]] const Entity testEntity2 = entityManager.addEntity();
+
+	entityManager.initIndex<MovementComponent>();
+
+	entityManager.removeEntity(testEntity1);
+
+	std::vector<std::tuple<const MovementComponent*>> resultComponents;
+	entityManager.getComponents<const MovementComponent>(resultComponents);
+	EXPECT_EQ(resultComponents.size(), static_cast<size_t>(0));
+}
+
+TEST(EntityManager, CheckForCorruptingIndexes_RemoveEntityNotInIndexWithLastEntityInIndex)
+{
+	using namespace EntityManagerTestInternals;
+
+	auto entityManagerData = PrepareEntityManager();
+	EntityManager& entityManager = entityManagerData->entityManager;
+
+	[[maybe_unused]] const Entity testEntity1 = entityManager.addEntity();
+
+	const Entity testEntity2 = entityManager.addEntity();
+	{
+		MovementComponent* move = entityManager.addComponent<MovementComponent>(testEntity2);
+		move->move.x = 300;
+		move->move.y = 400;
+	}
+
+	entityManager.initIndex<MovementComponent>();
+
+	entityManager.removeEntity(testEntity1);
+
+	std::vector<std::tuple<const MovementComponent*>> resultComponents;
+	entityManager.getComponents<const MovementComponent>(resultComponents);
+	ASSERT_EQ(resultComponents.size(), static_cast<size_t>(1));
+	EXPECT_EQ(std::get<0>(resultComponents[0])->move.x, 300);
+	EXPECT_EQ(std::get<0>(resultComponents[0])->move.y, 400);
+}
+
+TEST(EntityManager, CheckForCorruptingIndexes_RemoveEntityNotInIndexWithLastEntityNotInIndex)
+{
+	using namespace EntityManagerTestInternals;
+
+	auto entityManagerData = PrepareEntityManager();
+	EntityManager& entityManager = entityManagerData->entityManager;
+
+	[[maybe_unused]] const Entity testEntity1 = entityManager.addEntity();
+	[[maybe_unused]] const Entity testEntity2 = entityManager.addEntity();
+
+	entityManager.initIndex<MovementComponent>();
+
+	entityManager.removeEntity(testEntity1);
+
+	std::vector<std::tuple<const MovementComponent*>> resultComponents;
+	entityManager.getComponents<const MovementComponent>(resultComponents);
+	EXPECT_EQ(resultComponents.size(), static_cast<size_t>(0));
+}

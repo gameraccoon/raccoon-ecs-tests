@@ -1387,3 +1387,52 @@ TEST(EntityManager, CheckForCorruptingIndexes_RemoveEntityNotInIndexWithLastEnti
 	entityManager.getComponents<const MovementComponent>(resultComponents);
 	EXPECT_EQ(resultComponents.size(), static_cast<size_t>(0));
 }
+
+TEST(EntityManager, CheckForCorruptingIndexes_RemoveEntityInIndexWithReversedDenseArray)
+{
+	using namespace EntityManagerTestInternals;
+
+	auto entityManagerData = PrepareEntityManager();
+	EntityManager& entityManager = entityManagerData->entityManager;
+	entityManager.initIndex<MovementComponent>();
+
+	const Entity testEntity1 = entityManager.addEntity();
+	{
+		MovementComponent* move = entityManager.addComponent<MovementComponent>(testEntity1);
+		move->move.x = 100;
+		move->move.y = 200;
+	}
+
+	const Entity testEntity2 = entityManager.addEntity();
+	{
+		MovementComponent* move = entityManager.addComponent<MovementComponent>(testEntity2);
+		move->move.x = 300;
+		move->move.y = 400;
+	}
+
+	const Entity testEntity3 = entityManager.addEntity();
+	{
+		MovementComponent* move = entityManager.addComponent<MovementComponent>(testEntity3);
+		move->move.x = 500;
+		move->move.y = 600;
+	}
+
+	const Entity testEntity4 = entityManager.addEntity();
+	{
+		MovementComponent* move = entityManager.addComponent<MovementComponent>(testEntity4);
+		move->move.x = 700;
+		move->move.y = 800;
+	}
+
+	entityManager.removeEntity(testEntity2);
+	entityManager.removeEntity(testEntity1);
+
+	std::vector<std::tuple<const MovementComponent*>> resultComponents;
+	entityManager.getComponents<const MovementComponent>(resultComponents);
+	ASSERT_EQ(resultComponents.size(), static_cast<size_t>(2));
+	std::sort(resultComponents.begin(), resultComponents.end(), [](auto& set1, auto& set2) { return std::get<0>(set1)->move.x < std::get<0>(set2)->move.x; });
+	EXPECT_EQ(std::get<0>(resultComponents[0])->move.x, 500);
+	EXPECT_EQ(std::get<0>(resultComponents[0])->move.y, 600);
+	EXPECT_EQ(std::get<0>(resultComponents[1])->move.x, 700);
+	EXPECT_EQ(std::get<0>(resultComponents[1])->move.y, 800);
+}

@@ -7,7 +7,8 @@
 
 namespace EntityManagerTestInternals
 {
-	enum ComponentType {
+	enum ComponentType
+	{
 		EmptyComponentId,
 		TransformComponentId,
 		MovementComponentId,
@@ -69,7 +70,7 @@ namespace EntityManagerTestInternals
 			copyCallback();
 		}
 
-		LifetimeCheckerComponent operator=(const LifetimeCheckerComponent& other)
+		LifetimeCheckerComponent& operator=(const LifetimeCheckerComponent& other)
 		{
 			destructionCallback = other.destructionCallback;
 			copyCallback = other.copyCallback;
@@ -79,7 +80,7 @@ namespace EntityManagerTestInternals
 			return *this;
 		}
 
-		LifetimeCheckerComponent(LifetimeCheckerComponent&& other)
+		LifetimeCheckerComponent(LifetimeCheckerComponent&& other) noexcept
 			: destructionCallback(other.destructionCallback)
 			, copyCallback(other.copyCallback)
 			, moveCallback(other.moveCallback)
@@ -87,7 +88,7 @@ namespace EntityManagerTestInternals
 			moveCallback();
 		}
 
-		LifetimeCheckerComponent operator=(LifetimeCheckerComponent&& other)
+		LifetimeCheckerComponent& operator=(LifetimeCheckerComponent&& other) noexcept
 		{
 			destructionCallback = other.destructionCallback;
 			copyCallback = other.copyCallback;
@@ -127,7 +128,7 @@ namespace EntityManagerTestInternals
 		RegisterComponents(data->componentFactory);
 		return data;
 	}
-}
+} // namespace EntityManagerTestInternals
 
 TEST(EntityManager, EntitiesCanBeCreatedAndRemoved)
 {
@@ -197,8 +198,7 @@ TEST(EntityManager, EntitesWithComponentsCanBeRemoved)
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager = entityManagerData->entityManager;
 
-	const auto checkOnlyLocationsExist = [&entityManager](std::vector<TestVector2> locations)
-	{
+	const auto checkOnlyLocationsExist = [&entityManager](std::vector<TestVector2> locations) {
 		std::vector<std::tuple<TransformComponent*>> components;
 		entityManager.getComponents<TransformComponent>(components);
 		EXPECT_EQ(locations.size(), components.size());
@@ -210,7 +210,8 @@ TEST(EntityManager, EntitesWithComponentsCanBeRemoved)
 				std::remove(
 					locations.begin(),
 					locations.end(),
-					transform->pos),
+					transform->pos
+				),
 				locations.end()
 			);
 			// each iteration should remove exactly one element
@@ -231,7 +232,7 @@ TEST(EntityManager, EntitesWithComponentsCanBeRemoved)
 	TransformComponent* transform2 = entityManager.addComponent<TransformComponent>(testEntity2);
 	transform2->pos = location2;
 
-	checkOnlyLocationsExist({ location1, location2 });
+	checkOnlyLocationsExist({location1, location2});
 
 	entityManager.removeEntity(testEntity2);
 
@@ -239,11 +240,11 @@ TEST(EntityManager, EntitesWithComponentsCanBeRemoved)
 	TransformComponent* transform3 = entityManager.addComponent<TransformComponent>(testEntity3);
 	transform3->pos = location3;
 
-	checkOnlyLocationsExist({ location1, location3 });
+	checkOnlyLocationsExist({location1, location3});
 
 	entityManager.removeEntity(testEntity3);
 
-	checkOnlyLocationsExist({ location1 });
+	checkOnlyLocationsExist({location1});
 
 	entityManager.removeEntity(testEntity1);
 
@@ -272,21 +273,21 @@ TEST(EntityManager, ComponentsNeverCopiedOrMovedAndAlwaysDestroyed)
 
 		{
 			LifetimeCheckerComponent* lifetimeChecker = entityManager.addComponent<LifetimeCheckerComponent>(testEntity1);
-			lifetimeChecker->destructionCallback = [&destructionFn](){ destructionFn(0); };
+			lifetimeChecker->destructionCallback = [&destructionFn]() { destructionFn(0); };
 			lifetimeChecker->copyCallback = copyFn;
 			lifetimeChecker->moveCallback = moveFn;
 		}
 
 		{
 			LifetimeCheckerComponent* lifetimeChecker = entityManager.addComponent<LifetimeCheckerComponent>(testEntity2);
-			lifetimeChecker->destructionCallback = [&destructionFn](){ destructionFn(1); };
+			lifetimeChecker->destructionCallback = [&destructionFn]() { destructionFn(1); };
 			lifetimeChecker->copyCallback = copyFn;
 			lifetimeChecker->moveCallback = moveFn;
 		}
 
 		{
 			LifetimeCheckerComponent* lifetimeChecker = entityManager.addComponent<LifetimeCheckerComponent>(testEntity3);
-			lifetimeChecker->destructionCallback = [&destructionFn](){ destructionFn(2); };
+			lifetimeChecker->destructionCallback = [&destructionFn]() { destructionFn(2); };
 			lifetimeChecker->copyCallback = copyFn;
 			lifetimeChecker->moveCallback = moveFn;
 		}
@@ -324,20 +325,19 @@ TEST(EntityManager, ComponentSetsCanBeIteratedOver)
 	{
 		int iterationsCount = 0;
 		entityManager.forEachComponentSet<MovementComponent>(
-			[&iterationsCount](MovementComponent*)
-		{
-			++iterationsCount;
-		});
+			[&iterationsCount](MovementComponent*) {
+				++iterationsCount;
+			}
+		);
 		EXPECT_EQ(1, iterationsCount);
 	}
 
 	{
 		int iterationsCount = 0;
 		auto transformPredicate =
-		[&iterationsCount](TransformComponent*)
-		{
-			++iterationsCount;
-		};
+			[&iterationsCount](TransformComponent*) {
+				++iterationsCount;
+			};
 		entityManager.forEachComponentSet<TransformComponent>(transformPredicate);
 		EXPECT_EQ(2, iterationsCount);
 
@@ -349,10 +349,10 @@ TEST(EntityManager, ComponentSetsCanBeIteratedOver)
 	{
 		int iterationsCount = 0;
 		entityManager.forEachComponentSet<EmptyComponent, TransformComponent>(
-			[&iterationsCount](EmptyComponent*, TransformComponent*)
-		{
-			++iterationsCount;
-		});
+			[&iterationsCount](EmptyComponent*, TransformComponent*) {
+				++iterationsCount;
+			}
+		);
 		EXPECT_EQ(1, iterationsCount);
 	}
 }
@@ -375,18 +375,17 @@ TEST(EntityManager, ComponentSetsCanBeIteratedOverWithEntities)
 	{
 		int iterationsCount = 0;
 		entityManager.forEachComponentSetWithEntity<MovementComponent>(
-			[&iterationsCount, testEntity1](Entity entity, MovementComponent*)
-		{
-			EXPECT_EQ(testEntity1, entity);
-			++iterationsCount;
-		});
+			[&iterationsCount, testEntity1](Entity entity, MovementComponent*) {
+				EXPECT_EQ(testEntity1, entity);
+				++iterationsCount;
+			}
+		);
 		EXPECT_EQ(1, iterationsCount);
 	}
 
 	{
 		int iterationsCount = 0;
-		auto transformPredicate = [&iterationsCount](Entity, TransformComponent*)
-		{
+		auto transformPredicate = [&iterationsCount](Entity, TransformComponent*) {
 			++iterationsCount;
 		};
 		entityManager.forEachComponentSetWithEntity<TransformComponent>(transformPredicate);
@@ -400,11 +399,11 @@ TEST(EntityManager, ComponentSetsCanBeIteratedOverWithEntities)
 	{
 		int iterationsCount = 0;
 		entityManager.forEachComponentSetWithEntity<EmptyComponent, TransformComponent>(
-			[&iterationsCount, testEntity2](Entity entity, EmptyComponent*, TransformComponent*)
-		{
-			EXPECT_EQ(testEntity2, entity);
-			++iterationsCount;
-		});
+			[&iterationsCount, testEntity2](Entity entity, EmptyComponent*, TransformComponent*) {
+				EXPECT_EQ(testEntity2, entity);
+				++iterationsCount;
+			}
+		);
 		EXPECT_EQ(1, iterationsCount);
 	}
 }
@@ -599,8 +598,7 @@ TEST(EntityManager, ComponentAdditionOrRemovementCanBeScheduled)
 	const Entity testEntity = entityManager.addEntity();
 	entityManager.addComponent<TransformComponent>(testEntity);
 
-	entityManager.forEachComponentSetWithEntity<TransformComponent>([&entityManager](Entity entity,TransformComponent*)
-	{
+	entityManager.forEachComponentSetWithEntity<TransformComponent>([&entityManager](Entity entity, TransformComponent*) {
 		entityManager.scheduleRemoveComponent<TransformComponent>(entity);
 		MovementComponent* movement = entityManager.scheduleAddComponent<MovementComponent>(entity);
 		movement->move = TestVector2(2, 3);
@@ -657,14 +655,12 @@ TEST(EntityManager, EntityCanBeAddedInTwoSteps)
 
 	Entity testEntity = entityManager.generateNewEntityUnsafe();
 
-	auto doRedoCommand = [testEntity, &entityManager]()
-	{
+	auto doRedoCommand = [testEntity, &entityManager]() {
 		entityManager.addExistingEntityUnsafe(testEntity);
 		entityManager.addComponent<TransformComponent>(testEntity);
 	};
 
-	auto undoCommand = [testEntity, &entityManager]()
-	{
+	auto undoCommand = [testEntity, &entityManager]() {
 		entityManager.removeEntity(testEntity);
 	};
 
@@ -706,8 +702,7 @@ TEST(EntityManager, ComponentSetsCanBeIteratedOverWithAdditionalData)
 
 	{
 		int sum = 0;
-		auto iterationFunction = [&sum](int data, EmptyComponent*, TransformComponent*)
-		{
+		auto iterationFunction = [&sum](int data, EmptyComponent*, TransformComponent*) {
 			sum += data;
 		};
 		entityManager1.forEachComponentSet<EmptyComponent, TransformComponent>(iterationFunction, 20);
@@ -736,8 +731,7 @@ TEST(EntityManager, ComponentSetsCanBeIteratedOverWithEntitiesAndAdditionalData)
 
 	{
 		int sum = 0;
-		auto iterationFunction = [&sum](int data, Entity, EmptyComponent*, TransformComponent*)
-		{
+		auto iterationFunction = [&sum](int data, Entity, EmptyComponent*, TransformComponent*) {
 			sum += data;
 		};
 		entityManager1.forEachComponentSetWithEntity<EmptyComponent, TransformComponent>(iterationFunction, 20);

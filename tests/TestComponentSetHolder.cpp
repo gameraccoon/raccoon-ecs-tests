@@ -60,7 +60,7 @@ namespace ComponentHolderTestInternal
 			copyCallback();
 		}
 
-		LifetimeCheckerComponent operator=(const LifetimeCheckerComponent& other)
+		LifetimeCheckerComponent& operator=(const LifetimeCheckerComponent& other)
 		{
 			destructionCallback = other.destructionCallback;
 			copyCallback = other.copyCallback;
@@ -70,7 +70,7 @@ namespace ComponentHolderTestInternal
 			return *this;
 		}
 
-		LifetimeCheckerComponent(LifetimeCheckerComponent&& other)
+		LifetimeCheckerComponent(LifetimeCheckerComponent&& other) noexcept
 			: destructionCallback(other.destructionCallback)
 			, copyCallback(other.copyCallback)
 			, moveCallback(other.moveCallback)
@@ -78,7 +78,7 @@ namespace ComponentHolderTestInternal
 			moveCallback();
 		}
 
-		LifetimeCheckerComponent operator=(LifetimeCheckerComponent&& other)
+		LifetimeCheckerComponent& operator=(LifetimeCheckerComponent&& other) noexcept
 		{
 			destructionCallback = other.destructionCallback;
 			copyCallback = other.copyCallback;

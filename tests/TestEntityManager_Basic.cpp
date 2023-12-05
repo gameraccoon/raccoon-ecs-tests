@@ -5,7 +5,7 @@
 
 #include "raccoon-ecs/entity_manager.h"
 
-namespace EntityManagerTestInternals
+namespace TestEntityManager_Basic_Internal
 {
 	enum ComponentType
 	{
@@ -132,7 +132,7 @@ namespace EntityManagerTestInternals
 
 TEST(EntityManager, EntitiesCanBeCreatedAndRemoved)
 {
-	using namespace EntityManagerTestInternals;
+	using namespace TestEntityManager_Basic_Internal;
 
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager = entityManagerData->entityManager;
@@ -170,7 +170,7 @@ TEST(EntityManager, EntitiesCanBeCreatedAndRemoved)
 
 TEST(EntityManager, ComponentsCanBeAddedToEntities)
 {
-	using namespace EntityManagerTestInternals;
+	using namespace TestEntityManager_Basic_Internal;
 
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager = entityManagerData->entityManager;
@@ -193,7 +193,7 @@ TEST(EntityManager, ComponentsCanBeAddedToEntities)
 
 TEST(EntityManager, EntitesWithComponentsCanBeRemoved)
 {
-	using namespace EntityManagerTestInternals;
+	using namespace TestEntityManager_Basic_Internal;
 
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager = entityManagerData->entityManager;
@@ -253,7 +253,7 @@ TEST(EntityManager, EntitesWithComponentsCanBeRemoved)
 
 TEST(EntityManager, ComponentsNeverCopiedOrMovedAndAlwaysDestroyed)
 {
-	using namespace EntityManagerTestInternals;
+	using namespace TestEntityManager_Basic_Internal;
 
 	std::array<bool, 3> destroyedObjects{false, false, false};
 	int copiesCount = 0;
@@ -307,198 +307,9 @@ TEST(EntityManager, ComponentsNeverCopiedOrMovedAndAlwaysDestroyed)
 	EXPECT_EQ(0, movesCount);
 }
 
-TEST(EntityManager, ComponentSetsCanBeIteratedOver)
-{
-	using namespace EntityManagerTestInternals;
-
-	auto entityManagerData = PrepareEntityManager();
-	EntityManager& entityManager = entityManagerData->entityManager;
-
-	const Entity testEntity1 = entityManager.addEntity();
-	entityManager.addComponent<TransformComponent>(testEntity1);
-	entityManager.addComponent<MovementComponent>(testEntity1);
-
-	const Entity testEntity2 = entityManager.addEntity();
-	entityManager.addComponent<TransformComponent>(testEntity2);
-	entityManager.addComponent<EmptyComponent>(testEntity2);
-
-	{
-		int iterationsCount = 0;
-		entityManager.forEachComponentSet<MovementComponent>(
-			[&iterationsCount](MovementComponent*) {
-				++iterationsCount;
-			}
-		);
-		EXPECT_EQ(1, iterationsCount);
-	}
-
-	{
-		int iterationsCount = 0;
-		auto transformPredicate =
-			[&iterationsCount](TransformComponent*) {
-				++iterationsCount;
-			};
-		entityManager.forEachComponentSet<TransformComponent>(transformPredicate);
-		EXPECT_EQ(2, iterationsCount);
-
-		// call the second time to check that cached data is valid
-		entityManager.forEachComponentSet<TransformComponent>(transformPredicate);
-		EXPECT_EQ(4, iterationsCount);
-	}
-
-	{
-		int iterationsCount = 0;
-		entityManager.forEachComponentSet<EmptyComponent, TransformComponent>(
-			[&iterationsCount](EmptyComponent*, TransformComponent*) {
-				++iterationsCount;
-			}
-		);
-		EXPECT_EQ(1, iterationsCount);
-	}
-}
-
-TEST(EntityManager, ComponentSetsCanBeIteratedOverWithEntities)
-{
-	using namespace EntityManagerTestInternals;
-
-	auto entityManagerData = PrepareEntityManager();
-	EntityManager& entityManager = entityManagerData->entityManager;
-
-	const Entity testEntity1 = entityManager.addEntity();
-	entityManager.addComponent<TransformComponent>(testEntity1);
-	entityManager.addComponent<MovementComponent>(testEntity1);
-
-	const Entity testEntity2 = entityManager.addEntity();
-	entityManager.addComponent<TransformComponent>(testEntity2);
-	entityManager.addComponent<EmptyComponent>(testEntity2);
-
-	{
-		int iterationsCount = 0;
-		entityManager.forEachComponentSetWithEntity<MovementComponent>(
-			[&iterationsCount, testEntity1](Entity entity, MovementComponent*) {
-				EXPECT_EQ(testEntity1, entity);
-				++iterationsCount;
-			}
-		);
-		EXPECT_EQ(1, iterationsCount);
-	}
-
-	{
-		int iterationsCount = 0;
-		auto transformPredicate = [&iterationsCount](Entity, TransformComponent*) {
-			++iterationsCount;
-		};
-		entityManager.forEachComponentSetWithEntity<TransformComponent>(transformPredicate);
-		EXPECT_EQ(2, iterationsCount);
-
-		// call the second time to check that cached data is valid
-		entityManager.forEachComponentSetWithEntity<TransformComponent>(transformPredicate);
-		EXPECT_EQ(4, iterationsCount);
-	}
-
-	{
-		int iterationsCount = 0;
-		entityManager.forEachComponentSetWithEntity<EmptyComponent, TransformComponent>(
-			[&iterationsCount, testEntity2](Entity entity, EmptyComponent*, TransformComponent*) {
-				EXPECT_EQ(testEntity2, entity);
-				++iterationsCount;
-			}
-		);
-		EXPECT_EQ(1, iterationsCount);
-	}
-}
-
-TEST(EntityManager, ComponentSetsCanBeCollected)
-{
-	using namespace EntityManagerTestInternals;
-
-	auto entityManagerData = PrepareEntityManager();
-	EntityManager& entityManager = entityManagerData->entityManager;
-
-	const Entity testEntity1 = entityManager.addEntity();
-	entityManager.addComponent<TransformComponent>(testEntity1);
-	entityManager.addComponent<MovementComponent>(testEntity1);
-
-	const Entity testEntity2 = entityManager.addEntity();
-	entityManager.addComponent<TransformComponent>(testEntity2);
-	entityManager.addComponent<EmptyComponent>(testEntity2);
-
-	{
-		std::vector<std::tuple<MovementComponent*>> components;
-		entityManager.getComponents<MovementComponent>(components);
-		EXPECT_EQ(static_cast<size_t>(1u), components.size());
-	}
-
-	{
-		std::vector<std::tuple<TransformComponent*>> components;
-		entityManager.getComponents<TransformComponent>(components);
-		EXPECT_EQ(static_cast<size_t>(2u), components.size());
-
-		// call the second time to check that cached data is valid
-		entityManager.getComponents<TransformComponent>(components);
-		EXPECT_EQ(static_cast<size_t>(4u), components.size());
-	}
-
-	{
-		std::vector<std::tuple<EmptyComponent*, TransformComponent*>> components;
-		entityManager.getComponents<EmptyComponent, TransformComponent>(components);
-		EXPECT_EQ(static_cast<size_t>(1u), components.size());
-	}
-}
-
-TEST(EntityManager, ComponentSetsWithEntitiesCanBeCollected)
-{
-	using namespace EntityManagerTestInternals;
-
-	auto entityManagerData = PrepareEntityManager();
-	EntityManager& entityManager = entityManagerData->entityManager;
-
-	const Entity testEntity1 = entityManager.addEntity();
-	entityManager.addComponent<TransformComponent>(testEntity1);
-	entityManager.addComponent<MovementComponent>(testEntity1);
-
-	const Entity testEntity2 = entityManager.addEntity();
-	entityManager.addComponent<TransformComponent>(testEntity2);
-	entityManager.addComponent<EmptyComponent>(testEntity2);
-
-	{
-		std::vector<std::tuple<Entity, MovementComponent*>> components;
-		entityManager.getComponentsWithEntities<MovementComponent>(components);
-		EXPECT_EQ(static_cast<size_t>(1u), components.size());
-		if (!components.empty())
-		{
-			EXPECT_EQ(testEntity1, std::get<0>(components[0]));
-		}
-	}
-
-	{
-		std::vector<std::tuple<Entity, TransformComponent*>> components;
-		entityManager.getComponentsWithEntities<TransformComponent>(components);
-		EXPECT_EQ(static_cast<size_t>(2u), components.size());
-		if (components.size() >= 2)
-		{
-			EXPECT_NE(std::get<0>(components[0]), std::get<0>(components[1]));
-		}
-
-		// call the second time to check that cached data is valid
-		entityManager.getComponentsWithEntities<TransformComponent>(components);
-		EXPECT_EQ(static_cast<size_t>(4u), components.size());
-	}
-
-	{
-		std::vector<std::tuple<Entity, EmptyComponent*, TransformComponent*>> components;
-		entityManager.getComponentsWithEntities<EmptyComponent, TransformComponent>(components);
-		EXPECT_EQ(static_cast<size_t>(1u), components.size());
-		if (!components.empty())
-		{
-			EXPECT_EQ(testEntity2, std::get<0>(components[0]));
-		}
-	}
-}
-
 TEST(EntityManager, EntitiesCanBeMatchedByHavingComponents)
 {
-	using namespace EntityManagerTestInternals;
+	using namespace TestEntityManager_Basic_Internal;
 
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager = entityManagerData->entityManager;
@@ -562,7 +373,7 @@ TEST(EntityManager, EntitiesCanBeMatchedByHavingComponents)
 
 TEST(EntityManager, AllCopmonentsFromOneEntityCanBeCollected)
 {
-	using namespace EntityManagerTestInternals;
+	using namespace TestEntityManager_Basic_Internal;
 
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager = entityManagerData->entityManager;
@@ -590,7 +401,7 @@ TEST(EntityManager, AllCopmonentsFromOneEntityCanBeCollected)
 
 TEST(EntityManager, ComponentAdditionOrRemovementCanBeScheduled)
 {
-	using namespace EntityManagerTestInternals;
+	using namespace TestEntityManager_Basic_Internal;
 
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager = entityManagerData->entityManager;
@@ -616,9 +427,9 @@ TEST(EntityManager, ComponentAdditionOrRemovementCanBeScheduled)
 	}
 }
 
-TEST(EntityManager, EntitiesCanBeTransferedBetweenCopmonents)
+TEST(EntityManager, EntitiesCanBeTransferedBetweenEntityManagers)
 {
-	using namespace EntityManagerTestInternals;
+	using namespace TestEntityManager_Basic_Internal;
 
 	EntityGenerator entityGenerator;
 	ComponentFactory componentFactory;
@@ -648,7 +459,7 @@ TEST(EntityManager, EntitiesCanBeTransferedBetweenCopmonents)
 
 TEST(EntityManager, EntityCanBeAddedInTwoSteps)
 {
-	using namespace EntityManagerTestInternals;
+	using namespace TestEntityManager_Basic_Internal;
 
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager = entityManagerData->entityManager;
@@ -682,149 +493,9 @@ TEST(EntityManager, EntityCanBeAddedInTwoSteps)
 	EXPECT_TRUE(entityManager.doesEntityHaveComponent<TransformComponent>(testEntity));
 }
 
-TEST(EntityManager, ComponentSetsCanBeIteratedOverWithAdditionalData)
-{
-	using namespace EntityManagerTestInternals;
-
-	EntityGenerator entityGenerator;
-	ComponentFactory componentFactory;
-	RegisterComponents(componentFactory);
-	EntityManager entityManager1(componentFactory, entityGenerator);
-	EntityManager entityManager2(componentFactory, entityGenerator);
-
-	const Entity testEntity1 = entityManager1.addEntity();
-	entityManager1.addComponent<TransformComponent>(testEntity1);
-	entityManager1.addComponent<EmptyComponent>(testEntity1);
-
-	const Entity testEntity2 = entityManager2.addEntity();
-	entityManager2.addComponent<TransformComponent>(testEntity2);
-	entityManager2.addComponent<EmptyComponent>(testEntity2);
-
-	{
-		int sum = 0;
-		auto iterationFunction = [&sum](int data, EmptyComponent*, TransformComponent*) {
-			sum += data;
-		};
-		entityManager1.forEachComponentSet<EmptyComponent, TransformComponent>(iterationFunction, 20);
-		entityManager2.forEachComponentSet<EmptyComponent, TransformComponent>(iterationFunction, 50);
-		EXPECT_EQ(70, sum);
-	}
-}
-
-TEST(EntityManager, ComponentSetsCanBeIteratedOverWithEntitiesAndAdditionalData)
-{
-	using namespace EntityManagerTestInternals;
-
-	EntityGenerator entityGenerator;
-	ComponentFactory componentFactory;
-	RegisterComponents(componentFactory);
-	EntityManager entityManager1(componentFactory, entityGenerator);
-	EntityManager entityManager2(componentFactory, entityGenerator);
-
-	const Entity testEntity1 = entityManager1.addEntity();
-	entityManager1.addComponent<TransformComponent>(testEntity1);
-	entityManager1.addComponent<EmptyComponent>(testEntity1);
-
-	const Entity testEntity2 = entityManager2.addEntity();
-	entityManager2.addComponent<TransformComponent>(testEntity2);
-	entityManager2.addComponent<EmptyComponent>(testEntity2);
-
-	{
-		int sum = 0;
-		auto iterationFunction = [&sum](int data, Entity, EmptyComponent*, TransformComponent*) {
-			sum += data;
-		};
-		entityManager1.forEachComponentSetWithEntity<EmptyComponent, TransformComponent>(iterationFunction, 20);
-		entityManager2.forEachComponentSetWithEntity<EmptyComponent, TransformComponent>(iterationFunction, 50);
-		EXPECT_EQ(70, sum);
-	}
-}
-
-TEST(EntityManager, ComponentSetsWithAdditionalDataCanBeCollected)
-{
-	using namespace EntityManagerTestInternals;
-
-	EntityGenerator entityGenerator;
-	ComponentFactory componentFactory;
-	RegisterComponents(componentFactory);
-	EntityManager entityManager1(componentFactory, entityGenerator);
-	EntityManager entityManager2(componentFactory, entityGenerator);
-
-	const Entity testEntity1 = entityManager1.addEntity();
-	entityManager1.addComponent<TransformComponent>(testEntity1);
-	entityManager1.addComponent<EmptyComponent>(testEntity1);
-
-	const Entity testEntity2 = entityManager2.addEntity();
-	entityManager2.addComponent<TransformComponent>(testEntity2);
-	entityManager2.addComponent<EmptyComponent>(testEntity2);
-
-	{
-		std::vector<std::tuple<int, EmptyComponent*, TransformComponent*>> components;
-		entityManager1.getComponents<EmptyComponent, TransformComponent>(components, 10);
-		entityManager2.getComponents<EmptyComponent, TransformComponent>(components, 20);
-		EXPECT_EQ(static_cast<size_t>(2u), components.size());
-
-		if (components.size() >= 2)
-		{
-			if (std::get<0>(components[0]) == 10)
-			{
-				EXPECT_EQ(20, std::get<0>(components[1]));
-			}
-			else
-			{
-				EXPECT_EQ(20, std::get<0>(components[0]));
-				EXPECT_EQ(10, std::get<0>(components[1]));
-			}
-		}
-	}
-}
-
-TEST(EntityManager, ComponentSetsWithEntitiesAndAdditionalDataCanBeCollected)
-{
-	using namespace EntityManagerTestInternals;
-
-	EntityGenerator entityGenerator;
-	ComponentFactory componentFactory;
-	RegisterComponents(componentFactory);
-	EntityManager entityManager1(componentFactory, entityGenerator);
-	EntityManager entityManager2(componentFactory, entityGenerator);
-
-	const Entity testEntity1 = entityManager1.addEntity();
-	entityManager1.addComponent<TransformComponent>(testEntity1);
-	entityManager1.addComponent<EmptyComponent>(testEntity1);
-
-	const Entity testEntity2 = entityManager2.addEntity();
-	entityManager2.addComponent<TransformComponent>(testEntity2);
-	entityManager2.addComponent<EmptyComponent>(testEntity2);
-
-	{
-		std::vector<std::tuple<int, Entity, EmptyComponent*, TransformComponent*>> components;
-		entityManager1.getComponentsWithEntities<EmptyComponent, TransformComponent>(components, 10);
-		entityManager2.getComponentsWithEntities<EmptyComponent, TransformComponent>(components, 20);
-		EXPECT_EQ(static_cast<size_t>(2u), components.size());
-
-		if (components.size() >= 2)
-		{
-			if (std::get<0>(components[0]) == 10)
-			{
-				EXPECT_EQ(testEntity1, std::get<1>(components[0]));
-				EXPECT_EQ(20, std::get<0>(components[1]));
-				EXPECT_EQ(testEntity2, std::get<1>(components[1]));
-			}
-			else
-			{
-				EXPECT_EQ(20, std::get<0>(components[0]));
-				EXPECT_EQ(testEntity2, std::get<1>(components[0]));
-				EXPECT_EQ(10, std::get<0>(components[1]));
-				EXPECT_EQ(testEntity1, std::get<1>(components[1]));
-			}
-		}
-	}
-}
-
 TEST(EntityManager, MatchingEntityCountCanBeGathered)
 {
-	using namespace EntityManagerTestInternals;
+	using namespace TestEntityManager_Basic_Internal;
 
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager = entityManagerData->entityManager;
@@ -845,7 +516,7 @@ TEST(EntityManager, MatchingEntityCountCanBeGathered)
 
 TEST(EntityManager, EntityManagerCanBeCloned)
 {
-	using namespace EntityManagerTestInternals;
+	using namespace TestEntityManager_Basic_Internal;
 
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager = entityManagerData->entityManager;
@@ -885,7 +556,7 @@ TEST(EntityManager, EntityManagerCanBeCloned)
 
 TEST(EntityManager, CloningEntityManagerCopiesComponentsOnlyOnce)
 {
-	using namespace EntityManagerTestInternals;
+	using namespace TestEntityManager_Basic_Internal;
 
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager = entityManagerData->entityManager;
@@ -920,7 +591,7 @@ TEST(EntityManager, CloningEntityManagerCopiesComponentsOnlyOnce)
 
 TEST(EntityManager, CloningEntityManagerKeepsOldInstanceUntouched)
 {
-	using namespace EntityManagerTestInternals;
+	using namespace TestEntityManager_Basic_Internal;
 
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager = entityManagerData->entityManager;
@@ -953,7 +624,7 @@ TEST(EntityManager, CloningEntityManagerKeepsOldInstanceUntouched)
 
 TEST(EntityManager, CloningEntityManagerOverridesPreviousEntities)
 {
-	using namespace EntityManagerTestInternals;
+	using namespace TestEntityManager_Basic_Internal;
 
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager = entityManagerData->entityManager;
@@ -986,7 +657,7 @@ TEST(EntityManager, CloningEntityManagerOverridesPreviousEntities)
 
 TEST(EntityManager, CloningEntityManagerOverridesPreviousIndexes)
 {
-	using namespace EntityManagerTestInternals;
+	using namespace TestEntityManager_Basic_Internal;
 
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager = entityManagerData->entityManager;
@@ -1021,7 +692,7 @@ TEST(EntityManager, CloningEntityManagerOverridesPreviousIndexes)
 
 TEST(EntityManager, EntityManagerCanBeMoveConstructed)
 {
-	using namespace EntityManagerTestInternals;
+	using namespace TestEntityManager_Basic_Internal;
 
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager = entityManagerData->entityManager;
@@ -1060,7 +731,7 @@ TEST(EntityManager, EntityManagerCanBeMoveConstructed)
 
 TEST(EntityManager, MoveConstructingEntityManagerDoesNotMoveComponentsIndividually)
 {
-	using namespace EntityManagerTestInternals;
+	using namespace TestEntityManager_Basic_Internal;
 
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager = entityManagerData->entityManager;
@@ -1094,7 +765,7 @@ TEST(EntityManager, MoveConstructingEntityManagerDoesNotMoveComponentsIndividual
 
 TEST(EntityManager, MoveConstructingEntityManagerClearsMovedFromEntity)
 {
-	using namespace EntityManagerTestInternals;
+	using namespace TestEntityManager_Basic_Internal;
 
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager = entityManagerData->entityManager;
@@ -1114,7 +785,7 @@ TEST(EntityManager, MoveConstructingEntityManagerClearsMovedFromEntity)
 
 TEST(EntityManager, EntityManagerCanMoveAssigned)
 {
-	using namespace EntityManagerTestInternals;
+	using namespace TestEntityManager_Basic_Internal;
 
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager = entityManagerData->entityManager;
@@ -1154,7 +825,7 @@ TEST(EntityManager, EntityManagerCanMoveAssigned)
 
 TEST(EntityManager, MoveAssigningEntityManagerDoesNotMoveComponentsIndividually)
 {
-	using namespace EntityManagerTestInternals;
+	using namespace TestEntityManager_Basic_Internal;
 
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager = entityManagerData->entityManager;
@@ -1189,7 +860,7 @@ TEST(EntityManager, MoveAssigningEntityManagerDoesNotMoveComponentsIndividually)
 
 TEST(EntityManager, MoveAssigningEntityManagerClearsMovedFromEntity)
 {
-	using namespace EntityManagerTestInternals;
+	using namespace TestEntityManager_Basic_Internal;
 
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager = entityManagerData->entityManager;
@@ -1219,7 +890,7 @@ TEST(EntityManager, MoveAssigningEntityManagerClearsMovedFromEntity)
 
 TEST(EntityManager, MoveAssigningEntityManagerOverridesPreviousEntities)
 {
-	using namespace EntityManagerTestInternals;
+	using namespace TestEntityManager_Basic_Internal;
 
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager = entityManagerData->entityManager;
@@ -1252,7 +923,7 @@ TEST(EntityManager, MoveAssigningEntityManagerOverridesPreviousEntities)
 
 TEST(EntityManager, MoveAssigningEntityManagerOverridesPreviousIndexes)
 {
-	using namespace EntityManagerTestInternals;
+	using namespace TestEntityManager_Basic_Internal;
 
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager = entityManagerData->entityManager;
@@ -1283,156 +954,4 @@ TEST(EntityManager, MoveAssigningEntityManagerOverridesPreviousIndexes)
 	ASSERT_EQ(resultComponents.size(), static_cast<size_t>(1));
 	EXPECT_EQ(std::get<0>(resultComponents[0])->move.x, 100);
 	EXPECT_EQ(std::get<0>(resultComponents[0])->move.y, 200);
-}
-
-TEST(EntityManager, CheckForCorruptingIndexes_RemoveEntityInIndexWithLastEntityInIndex)
-{
-	using namespace EntityManagerTestInternals;
-
-	auto entityManagerData = PrepareEntityManager();
-	EntityManager& entityManager = entityManagerData->entityManager;
-
-	const Entity testEntity1 = entityManager.addEntity();
-	{
-		MovementComponent* move = entityManager.addComponent<MovementComponent>(testEntity1);
-		move->move.x = 100;
-		move->move.y = 200;
-	}
-
-	const Entity testEntity2 = entityManager.addEntity();
-	{
-		MovementComponent* move = entityManager.addComponent<MovementComponent>(testEntity2);
-		move->move.x = 300;
-		move->move.y = 400;
-	}
-
-	entityManager.initIndex<MovementComponent>();
-
-	entityManager.removeEntity(testEntity1);
-
-	std::vector<std::tuple<const MovementComponent*>> resultComponents;
-	entityManager.getComponents<const MovementComponent>(resultComponents);
-	ASSERT_EQ(resultComponents.size(), static_cast<size_t>(1));
-	EXPECT_EQ(std::get<0>(resultComponents[0])->move.x, 300);
-	EXPECT_EQ(std::get<0>(resultComponents[0])->move.y, 400);
-}
-
-TEST(EntityManager, CheckForCorruptingIndexes_RemoveEntityInIndexWithLastEntityNotInIndex)
-{
-	using namespace EntityManagerTestInternals;
-
-	auto entityManagerData = PrepareEntityManager();
-	EntityManager& entityManager = entityManagerData->entityManager;
-
-	const Entity testEntity1 = entityManager.addEntity();
-	{
-		MovementComponent* move = entityManager.addComponent<MovementComponent>(testEntity1);
-		move->move.x = 100;
-		move->move.y = 200;
-	}
-
-	[[maybe_unused]] const Entity testEntity2 = entityManager.addEntity();
-
-	entityManager.initIndex<MovementComponent>();
-
-	entityManager.removeEntity(testEntity1);
-
-	std::vector<std::tuple<const MovementComponent*>> resultComponents;
-	entityManager.getComponents<const MovementComponent>(resultComponents);
-	EXPECT_EQ(resultComponents.size(), static_cast<size_t>(0));
-}
-
-TEST(EntityManager, CheckForCorruptingIndexes_RemoveEntityNotInIndexWithLastEntityInIndex)
-{
-	using namespace EntityManagerTestInternals;
-
-	auto entityManagerData = PrepareEntityManager();
-	EntityManager& entityManager = entityManagerData->entityManager;
-
-	[[maybe_unused]] const Entity testEntity1 = entityManager.addEntity();
-
-	const Entity testEntity2 = entityManager.addEntity();
-	{
-		MovementComponent* move = entityManager.addComponent<MovementComponent>(testEntity2);
-		move->move.x = 300;
-		move->move.y = 400;
-	}
-
-	entityManager.initIndex<MovementComponent>();
-
-	entityManager.removeEntity(testEntity1);
-
-	std::vector<std::tuple<const MovementComponent*>> resultComponents;
-	entityManager.getComponents<const MovementComponent>(resultComponents);
-	ASSERT_EQ(resultComponents.size(), static_cast<size_t>(1));
-	EXPECT_EQ(std::get<0>(resultComponents[0])->move.x, 300);
-	EXPECT_EQ(std::get<0>(resultComponents[0])->move.y, 400);
-}
-
-TEST(EntityManager, CheckForCorruptingIndexes_RemoveEntityNotInIndexWithLastEntityNotInIndex)
-{
-	using namespace EntityManagerTestInternals;
-
-	auto entityManagerData = PrepareEntityManager();
-	EntityManager& entityManager = entityManagerData->entityManager;
-
-	[[maybe_unused]] const Entity testEntity1 = entityManager.addEntity();
-	[[maybe_unused]] const Entity testEntity2 = entityManager.addEntity();
-
-	entityManager.initIndex<MovementComponent>();
-
-	entityManager.removeEntity(testEntity1);
-
-	std::vector<std::tuple<const MovementComponent*>> resultComponents;
-	entityManager.getComponents<const MovementComponent>(resultComponents);
-	EXPECT_EQ(resultComponents.size(), static_cast<size_t>(0));
-}
-
-TEST(EntityManager, CheckForCorruptingIndexes_RemoveEntityInIndexWithReversedDenseArray)
-{
-	using namespace EntityManagerTestInternals;
-
-	auto entityManagerData = PrepareEntityManager();
-	EntityManager& entityManager = entityManagerData->entityManager;
-	entityManager.initIndex<MovementComponent>();
-
-	const Entity testEntity1 = entityManager.addEntity();
-	{
-		MovementComponent* move = entityManager.addComponent<MovementComponent>(testEntity1);
-		move->move.x = 100;
-		move->move.y = 200;
-	}
-
-	const Entity testEntity2 = entityManager.addEntity();
-	{
-		MovementComponent* move = entityManager.addComponent<MovementComponent>(testEntity2);
-		move->move.x = 300;
-		move->move.y = 400;
-	}
-
-	const Entity testEntity3 = entityManager.addEntity();
-	{
-		MovementComponent* move = entityManager.addComponent<MovementComponent>(testEntity3);
-		move->move.x = 500;
-		move->move.y = 600;
-	}
-
-	const Entity testEntity4 = entityManager.addEntity();
-	{
-		MovementComponent* move = entityManager.addComponent<MovementComponent>(testEntity4);
-		move->move.x = 700;
-		move->move.y = 800;
-	}
-
-	entityManager.removeEntity(testEntity2);
-	entityManager.removeEntity(testEntity1);
-
-	std::vector<std::tuple<const MovementComponent*>> resultComponents;
-	entityManager.getComponents<const MovementComponent>(resultComponents);
-	ASSERT_EQ(resultComponents.size(), static_cast<size_t>(2));
-	std::sort(resultComponents.begin(), resultComponents.end(), [](auto& set1, auto& set2) { return std::get<0>(set1)->move.x < std::get<0>(set2)->move.x; });
-	EXPECT_EQ(std::get<0>(resultComponents[0])->move.x, 500);
-	EXPECT_EQ(std::get<0>(resultComponents[0])->move.y, 600);
-	EXPECT_EQ(std::get<0>(resultComponents[1])->move.x, 700);
-	EXPECT_EQ(std::get<0>(resultComponents[1])->move.y, 800);
 }

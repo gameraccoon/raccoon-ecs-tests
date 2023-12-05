@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <vector>
+#include <thread>
 
 #include "raccoon-ecs/entity_manager.h"
 
@@ -315,4 +316,57 @@ TEST(EntityManager, CheckForCorruptingIndexes_RemoveEntityInIndexThenCopyEntityM
 	ASSERT_EQ(resultComponents.size(), static_cast<size_t>(1));
 	EXPECT_EQ(std::get<0>(resultComponents[0])->move.x, 300);
 	EXPECT_EQ(std::get<0>(resultComponents[0])->move.y, 400);
+}
+
+// regression test for a bug introduced in 00fad90
+TEST(EntityManager, EntityManager_TransferOwnershipToAnotherThread_CanStillAccessEntities)
+{
+	using namespace TestEntityManager_Indexes_Internal;
+
+	auto entityManagerData = PrepareEntityManager();
+	EntityManager& entityManager = entityManagerData->entityManager;
+
+	const Entity testEntity = entityManager.addEntity();
+	{
+		MovementComponent* move = entityManager.addComponent<MovementComponent>(testEntity);
+		move->move.x = 100;
+		move->move.y = 200;
+	}
+
+	entityManager.initIndex<MovementComponent>();
+
+	auto thread = std::thread([&entityManager]() {
+		std::vector<std::tuple<const MovementComponent*>> resultComponents;
+		entityManager.getComponents<const MovementComponent>(resultComponents);
+		ASSERT_EQ(resultComponents.size(), static_cast<size_t>(1));
+		EXPECT_EQ(std::get<0>(resultComponents[0])->move.x, 100);
+		EXPECT_EQ(std::get<0>(resultComponents[0])->move.y, 200);
+	});
+	thread.join();
+}
+
+// regression test for a bug introduced in 7ecad63
+TEST(EntityManager, TwoEntityMangersCreatedInDifferentThreads_AddAndRemoveIndexes_NoDataRaceOccurs)
+{
+	using namespace TestEntityManager_Indexes_Internal;
+	auto thread1 = std::thread([]() {
+		for (int i = 0; i < 1000; ++i)
+		{
+			auto entityManagerData = PrepareEntityManager();
+			EntityManager& entityManager = entityManagerData->entityManager;
+			entityManager.initIndex<MovementComponent>();
+		}
+	});
+
+	auto thread2 = std::thread([]() {
+		for (int i = 0; i < 1000; ++i)
+		{
+			auto entityManagerData = PrepareEntityManager();
+			EntityManager& entityManager = entityManagerData->entityManager;
+			entityManager.initIndex<MovementComponent>();
+		}
+	});
+
+	thread1.join();
+	thread2.join();
 }

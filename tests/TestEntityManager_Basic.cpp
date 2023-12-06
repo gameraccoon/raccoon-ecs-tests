@@ -107,16 +107,6 @@ namespace TestEntityManager_Basic_Internal
 		static ComponentType GetTypeId() { return NotUsedComponentId; };
 	};
 
-	struct ComponentWithStringId
-	{
-		static const std::string GetTypeId() { return "ComponentWithStringId"; };
-	};
-
-	struct ComponentWithConstCharId
-	{
-		static const char* GetTypeId() { return "ComponentWithConstCharId"; };
-	};
-
 	struct EntityManagerData
 	{
 		ComponentFactory componentFactory;
@@ -964,38 +954,4 @@ TEST(EntityManager, MoveAssigningEntityManagerOverridesPreviousIndexes)
 	ASSERT_EQ(resultComponents.size(), static_cast<size_t>(1));
 	EXPECT_EQ(std::get<0>(resultComponents[0])->move.x, 100);
 	EXPECT_EQ(std::get<0>(resultComponents[0])->move.y, 200);
-}
-
-TEST(EntityManager, EntityManagerWithStringComponentIdTypes_TryToCreateAndUse_CanBeCreatedAndUsed)
-{
-	using namespace TestEntityManager_Basic_Internal;
-	using EntityManager = RaccoonEcs::EntityManagerImpl<std::string>;
-	using ComponentFactory = RaccoonEcs::ComponentFactoryImpl<std::string>;
-
-	ComponentFactory componentFactory;
-	componentFactory.registerComponent<ComponentWithStringId>();
-	EntityGenerator entityGenerator;
-	EntityManager entityManager(componentFactory, entityGenerator);
-
-	const Entity testEntity = entityManager.addEntity();
-	entityManager.addComponent<ComponentWithStringId>(testEntity);
-
-	EXPECT_TRUE(entityManager.doesEntityHaveComponent<ComponentWithStringId>(testEntity));
-}
-
-TEST(EntityManager, EntityManagerWithConstCharComponentIdTypes_TryToCreateAndUse_CanBeCreatedAndUsed)
-{
-	using namespace TestEntityManager_Basic_Internal;
-	using EntityManager = RaccoonEcs::EntityManagerImpl<const char*>;
-	using ComponentFactory = RaccoonEcs::ComponentFactoryImpl<const char*>;
-
-	ComponentFactory componentFactory;
-	componentFactory.registerComponent<ComponentWithConstCharId>();
-	EntityGenerator entityGenerator;
-	EntityManager entityManager(componentFactory, entityGenerator);
-
-	const Entity testEntity = entityManager.addEntity();
-	entityManager.addComponent<ComponentWithConstCharId>(testEntity);
-
-	EXPECT_TRUE(entityManager.doesEntityHaveComponent<ComponentWithConstCharId>(testEntity));
 }

@@ -12,8 +12,6 @@ namespace TestEntityManager_ComponentSets_Internal
 		EmptyComponentId,
 		TransformComponentId,
 		MovementComponentId,
-		LifetimeCheckerComponentId,
-		NotUsedComponentId,
 	};
 
 	using ComponentFactory = RaccoonEcs::ComponentFactoryImpl<ComponentType>;
@@ -55,58 +53,6 @@ namespace TestEntityManager_ComponentSets_Internal
 		static ComponentType GetTypeId() { return MovementComponentId; };
 	};
 
-	struct LifetimeCheckerComponent
-	{
-		std::function<void()> destructionCallback;
-		std::function<void()> copyCallback;
-		std::function<void()> moveCallback;
-
-		LifetimeCheckerComponent() = default;
-		LifetimeCheckerComponent(const LifetimeCheckerComponent& other)
-			: destructionCallback(other.destructionCallback)
-			, copyCallback(other.copyCallback)
-			, moveCallback(other.moveCallback)
-		{
-			copyCallback();
-		}
-
-		LifetimeCheckerComponent& operator=(const LifetimeCheckerComponent& other)
-		{
-			destructionCallback = other.destructionCallback;
-			copyCallback = other.copyCallback;
-			moveCallback = other.moveCallback;
-
-			copyCallback();
-			return *this;
-		}
-
-		LifetimeCheckerComponent(LifetimeCheckerComponent&& other) noexcept
-			: destructionCallback(other.destructionCallback)
-			, copyCallback(other.copyCallback)
-			, moveCallback(other.moveCallback)
-		{
-			moveCallback();
-		}
-
-		LifetimeCheckerComponent& operator=(LifetimeCheckerComponent&& other) noexcept
-		{
-			destructionCallback = other.destructionCallback;
-			copyCallback = other.copyCallback;
-			moveCallback = other.moveCallback;
-
-			moveCallback();
-			return *this;
-		}
-		~LifetimeCheckerComponent() { destructionCallback(); }
-
-		static ComponentType GetTypeId() { return LifetimeCheckerComponentId; };
-	};
-
-	struct NotUsedComponent
-	{
-		static ComponentType GetTypeId() { return NotUsedComponentId; };
-	};
-
 	struct EntityManagerData
 	{
 		ComponentFactory componentFactory;
@@ -119,7 +65,6 @@ namespace TestEntityManager_ComponentSets_Internal
 		inOutFactory.registerComponent<EmptyComponent>();
 		inOutFactory.registerComponent<TransformComponent>();
 		inOutFactory.registerComponent<MovementComponent>();
-		inOutFactory.registerComponent<LifetimeCheckerComponent>();
 	}
 
 	static std::unique_ptr<EntityManagerData> PrepareEntityManager()

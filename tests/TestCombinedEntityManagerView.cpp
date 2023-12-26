@@ -18,6 +18,7 @@ namespace TestCombinedEntityManagerView_Internal
 	using ComponentFactory = RaccoonEcs::ComponentFactoryImpl<ComponentType>;
 	using EntityGenerator = RaccoonEcs::IncrementalEntityGenerator;
 	using EntityManager = RaccoonEcs::EntityManagerImpl<ComponentType>;
+	using EntityView = RaccoonEcs::EntityViewImpl<EntityManager>;
 	using Entity = RaccoonEcs::Entity;
 	using TypedComponent = RaccoonEcs::TypedComponentImpl<ComponentType>;
 	using CombinedEntityManagerView = RaccoonEcs::CombinedEntityManagerView<EntityManager, int>;
@@ -153,8 +154,8 @@ TEST(CombinedEntityManagerView, ComponentSetsCanBeIteratedOverWithEntities)
 	{
 		int iterationsCount = 0;
 		combinedEntityManager.forEachComponentSetWithEntity<MovementComponent>(
-			[&iterationsCount, testEntity1](Entity entity, MovementComponent*) {
-				EXPECT_EQ(testEntity1, entity);
+			[&iterationsCount, testEntity1](EntityView entityView, MovementComponent*) {
+				EXPECT_EQ(testEntity1, entityView.getEntity());
 				++iterationsCount;
 			}
 		);
@@ -163,7 +164,7 @@ TEST(CombinedEntityManagerView, ComponentSetsCanBeIteratedOverWithEntities)
 
 	{
 		int iterationsCount = 0;
-		auto transformPredicate = [&iterationsCount](Entity, TransformComponent*) {
+		auto transformPredicate = [&iterationsCount](EntityView, TransformComponent*) {
 			++iterationsCount;
 		};
 		combinedEntityManager.forEachComponentSetWithEntity<TransformComponent>(transformPredicate);
@@ -177,8 +178,8 @@ TEST(CombinedEntityManagerView, ComponentSetsCanBeIteratedOverWithEntities)
 	{
 		int iterationsCount = 0;
 		combinedEntityManager.forEachComponentSetWithEntity<EmptyComponent, TransformComponent>(
-			[&iterationsCount, testEntity2](Entity entity, EmptyComponent*, TransformComponent*) {
-				EXPECT_EQ(testEntity2, entity);
+			[&iterationsCount, testEntity2](EntityView entityView, EmptyComponent*, TransformComponent*) {
+				EXPECT_EQ(testEntity2, entityView.getEntity());
 				++iterationsCount;
 			}
 		);
@@ -324,7 +325,7 @@ TEST(CombinedEntityManagerView, ComponentSetsCanBeIteratedOverWithEntitiesAndAdd
 
 	{
 		int sum = 0;
-		auto iterationFunction = [&sum](int data, Entity, EmptyComponent*, TransformComponent*) {
+		auto iterationFunction = [&sum](int data, EntityView, EmptyComponent*, TransformComponent*) {
 			sum += data;
 		};
 		combinedEntityManager.forEachComponentSetWithEntityAndExtraData<EmptyComponent, TransformComponent>(iterationFunction);

@@ -13,6 +13,7 @@ namespace TestEntityManager_Indexes_Internal
 		EmptyComponentId,
 		TransformComponentId,
 		MovementComponentId,
+		SingleIntComponentId,
 		LifetimeCheckerComponentId,
 		NotUsedComponentId,
 	};
@@ -54,6 +55,13 @@ namespace TestEntityManager_Indexes_Internal
 		TestVector2 move;
 
 		static ComponentType GetTypeId() { return MovementComponentId; };
+	};
+
+	struct SingleIntComponent
+	{
+		int value;
+
+		static ComponentType GetTypeId() { return SingleIntComponentId; };
 	};
 
 	struct LifetimeCheckerComponent
@@ -120,6 +128,7 @@ namespace TestEntityManager_Indexes_Internal
 		inOutFactory.registerComponent<EmptyComponent>();
 		inOutFactory.registerComponent<TransformComponent>();
 		inOutFactory.registerComponent<MovementComponent>();
+		inOutFactory.registerComponent<SingleIntComponent>();
 		inOutFactory.registerComponent<LifetimeCheckerComponent>();
 	}
 
@@ -369,4 +378,283 @@ TEST(EntityManager, TwoEntityMangersCreatedInDifferentThreads_AddAndRemoveIndexe
 
 	thread1.join();
 	thread2.join();
+}
+
+// regression test for a bug introduced in 00fad90
+TEST(EntityManager, EntityManagerWithIndex_RemoveEntityNotInIndex_EntityDoesNotAppearInIndex)
+{
+	using namespace TestEntityManager_Indexes_Internal;
+
+	auto entityManagerData = PrepareEntityManager();
+	EntityManager& entityManager = entityManagerData->entityManager;
+
+	const Entity testEntity = entityManager.addEntity();
+	const Entity testEntity2 = entityManager.addEntity();
+	{
+		TransformComponent* transform = entityManager.addComponent<TransformComponent>(testEntity2);
+		transform->pos.x = 500;
+		transform->pos.y = 600;
+	}
+	entityManager.initIndex<TransformComponent>();
+
+	entityManager.removeEntity(testEntity);
+
+	entityManager.forEachComponentSetWithEntity<const TransformComponent>([testEntity2](Entity entity, const TransformComponent* transform) {
+		EXPECT_EQ(entity, testEntity2);
+		EXPECT_EQ(transform->pos.x, 500);
+		EXPECT_EQ(transform->pos.y, 600);
+	});
+}
+
+TEST(EntityManager, EntityManagerWithIndexes_RemoveFirstEntityInMultupleIndexes_IndexesAreNotCorrupted)
+{
+	using namespace TestEntityManager_Indexes_Internal;
+
+	auto entityManagerData = PrepareEntityManager();
+	EntityManager& entityManager = entityManagerData->entityManager;
+
+	const Entity testEntity1 = entityManager.addEntity();
+	{
+		TransformComponent* transform = entityManager.addComponent<TransformComponent>(testEntity1);
+		transform->pos.x = 100;
+		transform->pos.y = 200;
+	}
+	{
+		SingleIntComponent* singleInt = entityManager.addComponent<SingleIntComponent>(testEntity1);
+		singleInt->value = 300;
+	}
+	const Entity testEntity2 = entityManager.addEntity();
+	{
+		TransformComponent* transform = entityManager.addComponent<TransformComponent>(testEntity2);
+		transform->pos.x = 400;
+		transform->pos.y = 500;
+	}
+	{
+		MovementComponent* move = entityManager.addComponent<MovementComponent>(testEntity2);
+		move->move.x = 600;
+		move->move.y = 700;
+	}
+	entityManager.initIndex<TransformComponent>();
+	entityManager.initIndex<MovementComponent>();
+	entityManager.initIndex<SingleIntComponent>();
+
+	entityManager.removeEntity(testEntity1);
+
+	entityManager.forEachComponentSetWithEntity<const TransformComponent>([testEntity2](Entity entity, const TransformComponent* transform) {
+		EXPECT_EQ(entity, testEntity2);
+		EXPECT_EQ(transform->pos.x, 400);
+		EXPECT_EQ(transform->pos.y, 500);
+	});
+	entityManager.forEachComponentSetWithEntity<const MovementComponent>([testEntity2](Entity entity, const MovementComponent* move) {
+		EXPECT_EQ(entity, testEntity2);
+		EXPECT_EQ(move->move.x, 600);
+		EXPECT_EQ(move->move.y, 700);
+	});
+	entityManager.forEachComponentSetWithEntity<const SingleIntComponent>([](Entity, const SingleIntComponent*) {
+		FAIL();
+	});
+
+	entityManager.removeComponent<TransformComponent>(testEntity2);
+	entityManager.removeComponent<MovementComponent>(testEntity2);
+
+	entityManager.forEachComponentSetWithEntity<const TransformComponent>([](Entity, const TransformComponent*) {
+		FAIL();
+	});
+	entityManager.forEachComponentSetWithEntity<const MovementComponent>([](Entity, const MovementComponent*) {
+		FAIL();
+	});
+}
+
+TEST(EntityManager, EntityManagerWithIndexes_RemoveLastEntityInMultupleIndexes_IndexesAreNotCorrupted)
+{
+	using namespace TestEntityManager_Indexes_Internal;
+
+	auto entityManagerData = PrepareEntityManager();
+	EntityManager& entityManager = entityManagerData->entityManager;
+
+	const Entity testEntity1 = entityManager.addEntity();
+	{
+		TransformComponent* transform = entityManager.addComponent<TransformComponent>(testEntity1);
+		transform->pos.x = 100;
+		transform->pos.y = 200;
+	}
+	{
+		SingleIntComponent* singleInt = entityManager.addComponent<SingleIntComponent>(testEntity1);
+		singleInt->value = 300;
+	}
+	const Entity testEntity2 = entityManager.addEntity();
+	{
+		TransformComponent* transform = entityManager.addComponent<TransformComponent>(testEntity2);
+		transform->pos.x = 400;
+		transform->pos.y = 500;
+	}
+	{
+		MovementComponent* move = entityManager.addComponent<MovementComponent>(testEntity2);
+		move->move.x = 600;
+		move->move.y = 700;
+	}
+	entityManager.initIndex<TransformComponent>();
+	entityManager.initIndex<MovementComponent>();
+	entityManager.initIndex<SingleIntComponent>();
+
+	entityManager.removeEntity(testEntity2);
+
+	entityManager.forEachComponentSetWithEntity<const TransformComponent>([testEntity1](Entity entity, const TransformComponent* transform) {
+		EXPECT_EQ(entity, testEntity1);
+		EXPECT_EQ(transform->pos.x, 100);
+		EXPECT_EQ(transform->pos.y, 200);
+	});
+	entityManager.forEachComponentSetWithEntity<const MovementComponent>([](Entity, const MovementComponent*) {
+		FAIL();
+	});
+	entityManager.forEachComponentSetWithEntity<const SingleIntComponent>([testEntity1](Entity entity, const SingleIntComponent* singleInt) {
+		EXPECT_EQ(entity, testEntity1);
+		EXPECT_EQ(singleInt->value, 300);
+	});
+
+	entityManager.removeComponent<TransformComponent>(testEntity1);
+	entityManager.removeComponent<SingleIntComponent>(testEntity1);
+
+	entityManager.forEachComponentSetWithEntity<const TransformComponent>([](Entity, const TransformComponent*) {
+		FAIL();
+	});
+	entityManager.forEachComponentSetWithEntity<const SingleIntComponent>([](Entity, const SingleIntComponent*) {
+		FAIL();
+	});
+}
+
+TEST(EntityManager, EntityManager_TransferFirstEntityToAnotherManager_CanStillAccessEntities)
+{
+	using namespace TestEntityManager_Indexes_Internal;
+
+	auto entityManagerData = PrepareEntityManager();
+	EntityManager& entityManager1 = entityManagerData->entityManager;
+	EntityManager entityManager2{entityManagerData->componentFactory, entityManagerData->entityGenerator};
+
+	const Entity testEntity = entityManager1.addEntity();
+	{
+		MovementComponent* move = entityManager1.addComponent<MovementComponent>(testEntity);
+		move->move.x = 100;
+		move->move.y = 200;
+	}
+	{
+		SingleIntComponent* singleInt = entityManager1.addComponent<SingleIntComponent>(testEntity);
+		singleInt->value = 300;
+	}
+
+	const Entity testEntity2 = entityManager1.addEntity();
+	{
+		MovementComponent* move = entityManager1.addComponent<MovementComponent>(testEntity2);
+		move->move.x = 400;
+		move->move.y = 500;
+	}
+	{
+		TransformComponent* transform = entityManager1.addComponent<TransformComponent>(testEntity2);
+		transform->pos.x = 600;
+		transform->pos.y = 700;
+	}
+
+	entityManager1.initIndex<MovementComponent>();
+	entityManager1.initIndex<TransformComponent>();
+	entityManager1.initIndex<SingleIntComponent>();
+	entityManager2.initIndex<MovementComponent>();
+	entityManager2.initIndex<TransformComponent>();
+	entityManager2.initIndex<SingleIntComponent>();
+
+	entityManager1.transferEntityTo(entityManager2, testEntity);
+
+	entityManager1.forEachComponentSetWithEntity<const MovementComponent>([testEntity2](Entity entity, const MovementComponent* move) {
+		EXPECT_EQ(entity, testEntity2);
+		EXPECT_EQ(move->move.x, 400);
+		EXPECT_EQ(move->move.y, 500);
+	});
+	entityManager1.forEachComponentSetWithEntity<const TransformComponent>([testEntity2](Entity entity, const TransformComponent* transform) {
+		EXPECT_EQ(entity, testEntity2);
+		EXPECT_EQ(transform->pos.x, 600);
+		EXPECT_EQ(transform->pos.y, 700);
+	});
+	entityManager1.forEachComponentSetWithEntity<const SingleIntComponent>([](Entity, const SingleIntComponent*) {
+		FAIL();
+	});
+
+	entityManager2.forEachComponentSetWithEntity<const MovementComponent>([testEntity](Entity entity, const MovementComponent* move) {
+		EXPECT_EQ(entity, testEntity);
+		EXPECT_EQ(move->move.x, 100);
+		EXPECT_EQ(move->move.y, 200);
+	});
+	entityManager2.forEachComponentSetWithEntity<const TransformComponent>([](Entity, const TransformComponent*) {
+		FAIL();
+	});
+	entityManager2.forEachComponentSetWithEntity<const SingleIntComponent>([testEntity](Entity entity, const SingleIntComponent* singleInt) {
+		EXPECT_EQ(entity, testEntity);
+		EXPECT_EQ(singleInt->value, 300);
+	});
+}
+
+TEST(EntityManager, EntityManager_TransferLastEntityToAnotherManager_CanStillAccessEntities)
+{
+	using namespace TestEntityManager_Indexes_Internal;
+
+	auto entityManagerData = PrepareEntityManager();
+	EntityManager& entityManager1 = entityManagerData->entityManager;
+	EntityManager entityManager2{entityManagerData->componentFactory, entityManagerData->entityGenerator};
+
+	const Entity testEntity1 = entityManager1.addEntity();
+	{
+		MovementComponent* move = entityManager1.addComponent<MovementComponent>(testEntity1);
+		move->move.x = 100;
+		move->move.y = 200;
+	}
+	{
+		SingleIntComponent* singleInt = entityManager1.addComponent<SingleIntComponent>(testEntity1);
+		singleInt->value = 300;
+	}
+
+	const Entity testEntity2 = entityManager1.addEntity();
+	{
+		MovementComponent* move = entityManager1.addComponent<MovementComponent>(testEntity2);
+		move->move.x = 400;
+		move->move.y = 500;
+	}
+	{
+		TransformComponent* transform = entityManager1.addComponent<TransformComponent>(testEntity2);
+		transform->pos.x = 600;
+		transform->pos.y = 700;
+	}
+
+	entityManager1.initIndex<MovementComponent>();
+	entityManager1.initIndex<TransformComponent>();
+	entityManager1.initIndex<SingleIntComponent>();
+	entityManager2.initIndex<MovementComponent>();
+	entityManager2.initIndex<TransformComponent>();
+	entityManager2.initIndex<SingleIntComponent>();
+
+	entityManager1.transferEntityTo(entityManager2, testEntity2);
+
+	entityManager1.forEachComponentSetWithEntity<const MovementComponent>([testEntity1](Entity entity, const MovementComponent* move) {
+		EXPECT_EQ(entity, testEntity1);
+		EXPECT_EQ(move->move.x, 100);
+		EXPECT_EQ(move->move.y, 200);
+	});
+	entityManager1.forEachComponentSetWithEntity<const TransformComponent>([](Entity, const TransformComponent*) {
+		FAIL();
+	});
+	entityManager1.forEachComponentSetWithEntity<const SingleIntComponent>([testEntity1](Entity entity, const SingleIntComponent* singleInt) {
+		EXPECT_EQ(entity, testEntity1);
+		EXPECT_EQ(singleInt->value, 300);
+	});
+
+	entityManager2.forEachComponentSetWithEntity<const MovementComponent>([testEntity2](Entity entity, const MovementComponent* move) {
+		EXPECT_EQ(entity, testEntity2);
+		EXPECT_EQ(move->move.x, 400);
+		EXPECT_EQ(move->move.y, 500);
+	});
+	entityManager2.forEachComponentSetWithEntity<const TransformComponent>([testEntity2](Entity entity, const TransformComponent* transform) {
+		EXPECT_EQ(entity, testEntity2);
+		EXPECT_EQ(transform->pos.x, 600);
+		EXPECT_EQ(transform->pos.y, 700);
+	});
+	entityManager2.forEachComponentSetWithEntity<const SingleIntComponent>([](Entity, const SingleIntComponent*) {
+		FAIL();
+	});
 }

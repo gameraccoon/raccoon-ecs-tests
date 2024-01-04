@@ -10,12 +10,14 @@ namespace TestEntityManager_Indexes_Internal
 {
 	enum ComponentType
 	{
-		EmptyComponentId,
-		TransformComponentId,
-		MovementComponentId,
-		SingleIntComponentId,
-		LifetimeCheckerComponentId,
-		NotUsedComponentId,
+		ComponentTypeA,
+		ComponentTypeB,
+		ComponentTypeC,
+		ComponentTypeD,
+		ComponentTypeE,
+		ComponentTypeF,
+		ComponentTypeG,
+		ComponentTypeH,
 	};
 
 	using ComponentFactory = RaccoonEcs::ComponentFactoryImpl<ComponentType>;
@@ -24,96 +26,60 @@ namespace TestEntityManager_Indexes_Internal
 	using Entity = RaccoonEcs::Entity;
 	using TypedComponent = RaccoonEcs::TypedComponentImpl<ComponentType>;
 
-	struct TestVector2
-	{
-		TestVector2() = default;
-		TestVector2(int x, int y)
-			: x(x)
-			, y(y)
-		{}
-
-		int x;
-		int y;
-
-		bool operator==(TestVector2 other) const { return x == other.x && y == other.y; }
-	};
-
-	struct EmptyComponent
-	{
-		static ComponentType GetTypeId() { return EmptyComponentId; };
-	};
-
-	struct TransformComponent
-	{
-		TestVector2 pos;
-
-		static ComponentType GetTypeId() { return TransformComponentId; };
-	};
-
-	struct MovementComponent
-	{
-		TestVector2 move;
-
-		static ComponentType GetTypeId() { return MovementComponentId; };
-	};
-
-	struct SingleIntComponent
+	struct ComponentA
 	{
 		int value;
 
-		static ComponentType GetTypeId() { return SingleIntComponentId; };
+		static ComponentType GetTypeId() { return ComponentTypeA; };
 	};
 
-	struct LifetimeCheckerComponent
+	struct ComponentB
 	{
-		std::function<void()> destructionCallback;
-		std::function<void()> copyCallback;
-		std::function<void()> moveCallback;
+		int value;
 
-		LifetimeCheckerComponent() = default;
-		LifetimeCheckerComponent(const LifetimeCheckerComponent& other)
-			: destructionCallback(other.destructionCallback)
-			, copyCallback(other.copyCallback)
-			, moveCallback(other.moveCallback)
-		{
-			copyCallback();
-		}
-
-		LifetimeCheckerComponent& operator=(const LifetimeCheckerComponent& other)
-		{
-			destructionCallback = other.destructionCallback;
-			copyCallback = other.copyCallback;
-			moveCallback = other.moveCallback;
-
-			copyCallback();
-			return *this;
-		}
-
-		LifetimeCheckerComponent(LifetimeCheckerComponent&& other) noexcept
-			: destructionCallback(other.destructionCallback)
-			, copyCallback(other.copyCallback)
-			, moveCallback(other.moveCallback)
-		{
-			moveCallback();
-		}
-
-		LifetimeCheckerComponent& operator=(LifetimeCheckerComponent&& other) noexcept
-		{
-			destructionCallback = other.destructionCallback;
-			copyCallback = other.copyCallback;
-			moveCallback = other.moveCallback;
-
-			moveCallback();
-			return *this;
-		}
-		~LifetimeCheckerComponent() { destructionCallback(); }
-
-		static ComponentType GetTypeId() { return LifetimeCheckerComponentId; };
+		static ComponentType GetTypeId() { return ComponentTypeB; };
 	};
 
-	struct NotUsedComponent
+	struct ComponentC
 	{
-		static ComponentType GetTypeId() { return NotUsedComponentId; };
+		int value;
+
+		static ComponentType GetTypeId() { return ComponentTypeC; };
+	};
+
+	struct ComponentD
+	{
+		int value;
+
+		static ComponentType GetTypeId() { return ComponentTypeD; };
+	};
+
+	struct ComponentE
+	{
+		int value;
+
+		static ComponentType GetTypeId() { return ComponentTypeE; };
+	};
+
+	struct ComponentF
+	{
+		int value;
+
+		static ComponentType GetTypeId() { return ComponentTypeF; };
+	};
+
+	struct ComponentG
+	{
+		int value;
+
+		static ComponentType GetTypeId() { return ComponentTypeG; };
+	};
+
+	struct ComponentH
+	{
+		int value;
+
+		static ComponentType GetTypeId() { return ComponentTypeH; };
 	};
 
 	struct EntityManagerData
@@ -125,11 +91,14 @@ namespace TestEntityManager_Indexes_Internal
 
 	static void RegisterComponents(ComponentFactory& inOutFactory)
 	{
-		inOutFactory.registerComponent<EmptyComponent>();
-		inOutFactory.registerComponent<TransformComponent>();
-		inOutFactory.registerComponent<MovementComponent>();
-		inOutFactory.registerComponent<SingleIntComponent>();
-		inOutFactory.registerComponent<LifetimeCheckerComponent>();
+		inOutFactory.registerComponent<ComponentA>();
+		inOutFactory.registerComponent<ComponentB>();
+		inOutFactory.registerComponent<ComponentC>();
+		inOutFactory.registerComponent<ComponentD>();
+		inOutFactory.registerComponent<ComponentE>();
+		inOutFactory.registerComponent<ComponentF>();
+		inOutFactory.registerComponent<ComponentG>();
+		inOutFactory.registerComponent<ComponentH>();
 	}
 
 	static std::unique_ptr<EntityManagerData> PrepareEntityManager()
@@ -137,6 +106,59 @@ namespace TestEntityManager_Indexes_Internal
 		auto data = std::make_unique<EntityManagerData>();
 		RegisterComponents(data->componentFactory);
 		return data;
+	}
+
+	static std::tuple<Entity, Entity, Entity> setUpComponentPermutationsFor3Entities(EntityManager& entityManager) {
+		//   1 2 3
+		// A x
+		// B   x
+		// C x x
+		// D     x
+		// E x   x
+		// F   x x
+		// G x x x
+		// H
+
+		const Entity entity1 = entityManager.addEntity();
+		entityManager.addComponent<ComponentA>(entity1)->value = 1;
+		entityManager.addComponent<ComponentC>(entity1)->value = 3;
+		entityManager.addComponent<ComponentE>(entity1)->value = 5;
+		entityManager.addComponent<ComponentG>(entity1)->value = 7;
+
+		const Entity entity2 = entityManager.addEntity();
+		entityManager.addComponent<ComponentB>(entity2)->value = 20;
+		entityManager.addComponent<ComponentC>(entity2)->value = 30;
+		entityManager.addComponent<ComponentF>(entity2)->value = 60;
+		entityManager.addComponent<ComponentG>(entity2)->value = 70;
+
+		const Entity entity3 = entityManager.addEntity();
+		entityManager.addComponent<ComponentD>(entity3)->value = 400;
+		entityManager.addComponent<ComponentE>(entity3)->value = 500;
+		entityManager.addComponent<ComponentF>(entity3)->value = 600;
+		entityManager.addComponent<ComponentG>(entity3)->value = 700;
+
+		entityManager.initIndex<ComponentA>();
+		entityManager.initIndex<ComponentB>();
+		entityManager.initIndex<ComponentC>();
+		entityManager.initIndex<ComponentD>();
+		entityManager.initIndex<ComponentE>();
+		entityManager.initIndex<ComponentF>();
+		entityManager.initIndex<ComponentG>();
+		entityManager.initIndex<ComponentH>();
+
+		return {entity1, entity2, entity3};
+	}
+
+	template<typename Component>
+	static void checkComponentEntities(EntityManager& entityManager, std::vector<std::pair<Entity, int>> entities) {
+		entityManager.forEachComponentSetWithEntity<Component>([&entities](Entity entity, const Component* component) mutable {
+			auto it = std::find_if(entities.begin(), entities.end(), [entity](auto& pair) { return pair.first == entity; });
+			ASSERT_NE(it, entities.end());
+			EXPECT_EQ(component->value, it->second);
+			entities.erase(it);
+		});
+
+		EXPECT_TRUE(entities.empty());
 	}
 } // namespace EntityManagerTestInternals
 
@@ -149,27 +171,24 @@ TEST(EntityManager, CheckForCorruptingIndexes_RemoveEntityInIndexWithLastEntityI
 
 	const Entity testEntity1 = entityManager.addEntity();
 	{
-		MovementComponent* move = entityManager.addComponent<MovementComponent>(testEntity1);
-		move->move.x = 100;
-		move->move.y = 200;
+		ComponentA* a = entityManager.addComponent<ComponentA>(testEntity1);
+		a->value = 100;
 	}
 
 	const Entity testEntity2 = entityManager.addEntity();
 	{
-		MovementComponent* move = entityManager.addComponent<MovementComponent>(testEntity2);
-		move->move.x = 300;
-		move->move.y = 400;
+		ComponentA* a = entityManager.addComponent<ComponentA>(testEntity2);
+		a->value = 200;
 	}
 
-	entityManager.initIndex<MovementComponent>();
+	entityManager.initIndex<ComponentA>();
 
 	entityManager.removeEntity(testEntity1);
 
-	std::vector<std::tuple<const MovementComponent*>> resultComponents;
-	entityManager.getComponents<const MovementComponent>(resultComponents);
+	std::vector<std::tuple<const ComponentA*>> resultComponents;
+	entityManager.getComponents<const ComponentA>(resultComponents);
 	ASSERT_EQ(resultComponents.size(), static_cast<size_t>(1));
-	EXPECT_EQ(std::get<0>(resultComponents[0])->move.x, 300);
-	EXPECT_EQ(std::get<0>(resultComponents[0])->move.y, 400);
+	EXPECT_EQ(std::get<0>(resultComponents[0])->value, 200);
 }
 
 TEST(EntityManager, CheckForCorruptingIndexes_RemoveEntityInIndexWithLastEntityNotInIndex)
@@ -181,19 +200,18 @@ TEST(EntityManager, CheckForCorruptingIndexes_RemoveEntityInIndexWithLastEntityN
 
 	const Entity testEntity1 = entityManager.addEntity();
 	{
-		MovementComponent* move = entityManager.addComponent<MovementComponent>(testEntity1);
-		move->move.x = 100;
-		move->move.y = 200;
+		ComponentA* a = entityManager.addComponent<ComponentA>(testEntity1);
+		a->value = 100;
 	}
 
-	[[maybe_unused]] const Entity testEntity2 = entityManager.addEntity();
+	entityManager.addEntity();
 
-	entityManager.initIndex<MovementComponent>();
+	entityManager.initIndex<ComponentA>();
 
 	entityManager.removeEntity(testEntity1);
 
-	std::vector<std::tuple<const MovementComponent*>> resultComponents;
-	entityManager.getComponents<const MovementComponent>(resultComponents);
+	std::vector<std::tuple<const ComponentA*>> resultComponents;
+	entityManager.getComponents<const ComponentA>(resultComponents);
 	EXPECT_EQ(resultComponents.size(), static_cast<size_t>(0));
 }
 
@@ -208,20 +226,18 @@ TEST(EntityManager, CheckForCorruptingIndexes_RemoveEntityNotInIndexWithLastEnti
 
 	const Entity testEntity2 = entityManager.addEntity();
 	{
-		MovementComponent* move = entityManager.addComponent<MovementComponent>(testEntity2);
-		move->move.x = 300;
-		move->move.y = 400;
+		ComponentA* a = entityManager.addComponent<ComponentA>(testEntity2);
+		a->value = 200;
 	}
 
-	entityManager.initIndex<MovementComponent>();
+	entityManager.initIndex<ComponentA>();
 
 	entityManager.removeEntity(testEntity1);
 
-	std::vector<std::tuple<const MovementComponent*>> resultComponents;
-	entityManager.getComponents<const MovementComponent>(resultComponents);
+	std::vector<std::tuple<const ComponentA*>> resultComponents;
+	entityManager.getComponents<const ComponentA>(resultComponents);
 	ASSERT_EQ(resultComponents.size(), static_cast<size_t>(1));
-	EXPECT_EQ(std::get<0>(resultComponents[0])->move.x, 300);
-	EXPECT_EQ(std::get<0>(resultComponents[0])->move.y, 400);
+	EXPECT_EQ(std::get<0>(resultComponents[0])->value, 200);
 }
 
 TEST(EntityManager, CheckForCorruptingIndexes_RemoveEntityNotInIndexWithLastEntityNotInIndex)
@@ -234,12 +250,12 @@ TEST(EntityManager, CheckForCorruptingIndexes_RemoveEntityNotInIndexWithLastEnti
 	[[maybe_unused]] const Entity testEntity1 = entityManager.addEntity();
 	[[maybe_unused]] const Entity testEntity2 = entityManager.addEntity();
 
-	entityManager.initIndex<MovementComponent>();
+	entityManager.initIndex<ComponentA>();
 
 	entityManager.removeEntity(testEntity1);
 
-	std::vector<std::tuple<const MovementComponent*>> resultComponents;
-	entityManager.getComponents<const MovementComponent>(resultComponents);
+	std::vector<std::tuple<const ComponentA*>> resultComponents;
+	entityManager.getComponents<const ComponentA>(resultComponents);
 	EXPECT_EQ(resultComponents.size(), static_cast<size_t>(0));
 }
 
@@ -249,47 +265,41 @@ TEST(EntityManager, CheckForCorruptingIndexes_RemoveEntityInIndexWithReversedDen
 
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager = entityManagerData->entityManager;
-	entityManager.initIndex<MovementComponent>();
+	entityManager.initIndex<ComponentA>();
 
 	const Entity testEntity1 = entityManager.addEntity();
 	{
-		MovementComponent* move = entityManager.addComponent<MovementComponent>(testEntity1);
-		move->move.x = 100;
-		move->move.y = 200;
+		ComponentA* a = entityManager.addComponent<ComponentA>(testEntity1);
+		a->value = 100;
 	}
 
 	const Entity testEntity2 = entityManager.addEntity();
 	{
-		MovementComponent* move = entityManager.addComponent<MovementComponent>(testEntity2);
-		move->move.x = 300;
-		move->move.y = 400;
+		ComponentA* a = entityManager.addComponent<ComponentA>(testEntity2);
+		a->value = 200;
 	}
 
 	const Entity testEntity3 = entityManager.addEntity();
 	{
-		MovementComponent* move = entityManager.addComponent<MovementComponent>(testEntity3);
-		move->move.x = 500;
-		move->move.y = 600;
+		ComponentA* a = entityManager.addComponent<ComponentA>(testEntity3);
+		a->value = 300;
 	}
 
 	const Entity testEntity4 = entityManager.addEntity();
 	{
-		MovementComponent* move = entityManager.addComponent<MovementComponent>(testEntity4);
-		move->move.x = 700;
-		move->move.y = 800;
+		ComponentA* a = entityManager.addComponent<ComponentA>(testEntity4);
+		a->value = 400;
 	}
 
 	entityManager.removeEntity(testEntity2);
 	entityManager.removeEntity(testEntity1);
 
-	std::vector<std::tuple<const MovementComponent*>> resultComponents;
-	entityManager.getComponents<const MovementComponent>(resultComponents);
+	std::vector<std::tuple<const ComponentA*>> resultComponents;
+	entityManager.getComponents<const ComponentA>(resultComponents);
 	ASSERT_EQ(resultComponents.size(), static_cast<size_t>(2));
-	std::sort(resultComponents.begin(), resultComponents.end(), [](auto& set1, auto& set2) { return std::get<0>(set1)->move.x < std::get<0>(set2)->move.x; });
-	EXPECT_EQ(std::get<0>(resultComponents[0])->move.x, 500);
-	EXPECT_EQ(std::get<0>(resultComponents[0])->move.y, 600);
-	EXPECT_EQ(std::get<0>(resultComponents[1])->move.x, 700);
-	EXPECT_EQ(std::get<0>(resultComponents[1])->move.y, 800);
+	std::sort(resultComponents.begin(), resultComponents.end(), [](auto& set1, auto& set2) { return std::get<0>(set1)->value < std::get<0>(set2)->value; });
+	EXPECT_EQ(std::get<0>(resultComponents[0])->value, 300);
+	EXPECT_EQ(std::get<0>(resultComponents[1])->value, 400);
 }
 
 TEST(EntityManager, CheckForCorruptingIndexes_RemoveEntityInIndexThenCopyEntityManager)
@@ -301,30 +311,27 @@ TEST(EntityManager, CheckForCorruptingIndexes_RemoveEntityInIndexThenCopyEntityM
 
 	const Entity testEntity1 = entityManager.addEntity();
 	{
-		MovementComponent* move = entityManager.addComponent<MovementComponent>(testEntity1);
-		move->move.x = 100;
-		move->move.y = 200;
+		ComponentA* a = entityManager.addComponent<ComponentA>(testEntity1);
+		a->value = 100;
 	}
 
 	const Entity testEntity2 = entityManager.addEntity();
 	{
-		MovementComponent* move = entityManager.addComponent<MovementComponent>(testEntity2);
-		move->move.x = 300;
-		move->move.y = 400;
+		ComponentA* a = entityManager.addComponent<ComponentA>(testEntity2);
+		a->value = 200;
 	}
 
-	entityManager.initIndex<MovementComponent>();
+	entityManager.initIndex<ComponentA>();
 
 	entityManager.removeEntity(testEntity1);
 
 	EntityManager entityManagerCopy(entityManagerData->componentFactory, entityManagerData->entityGenerator);
 	entityManagerCopy.overrideBy(entityManager);
 
-	std::vector<std::tuple<const MovementComponent*>> resultComponents;
-	entityManager.getComponents<const MovementComponent>(resultComponents);
+	std::vector<std::tuple<const ComponentA*>> resultComponents;
+	entityManager.getComponents<const ComponentA>(resultComponents);
 	ASSERT_EQ(resultComponents.size(), static_cast<size_t>(1));
-	EXPECT_EQ(std::get<0>(resultComponents[0])->move.x, 300);
-	EXPECT_EQ(std::get<0>(resultComponents[0])->move.y, 400);
+	EXPECT_EQ(std::get<0>(resultComponents[0])->value, 200);
 }
 
 // regression test for a bug introduced in 00fad90
@@ -337,19 +344,17 @@ TEST(EntityManager, EntityManager_TransferOwnershipToAnotherThread_CanStillAcces
 
 	const Entity testEntity = entityManager.addEntity();
 	{
-		MovementComponent* move = entityManager.addComponent<MovementComponent>(testEntity);
-		move->move.x = 100;
-		move->move.y = 200;
+		ComponentA* a = entityManager.addComponent<ComponentA>(testEntity);
+		a->value = 100;
 	}
 
-	entityManager.initIndex<MovementComponent>();
+	entityManager.initIndex<ComponentA>();
 
 	auto thread = std::thread([&entityManager]() {
-		std::vector<std::tuple<const MovementComponent*>> resultComponents;
-		entityManager.getComponents<const MovementComponent>(resultComponents);
+		std::vector<std::tuple<const ComponentA*>> resultComponents;
+		entityManager.getComponents<const ComponentA>(resultComponents);
 		ASSERT_EQ(resultComponents.size(), static_cast<size_t>(1));
-		EXPECT_EQ(std::get<0>(resultComponents[0])->move.x, 100);
-		EXPECT_EQ(std::get<0>(resultComponents[0])->move.y, 200);
+		EXPECT_EQ(std::get<0>(resultComponents[0])->value, 100);
 	});
 	thread.join();
 }
@@ -363,7 +368,7 @@ TEST(EntityManager, TwoEntityMangersCreatedInDifferentThreads_AddAndRemoveIndexe
 		{
 			auto entityManagerData = PrepareEntityManager();
 			EntityManager& entityManager = entityManagerData->entityManager;
-			entityManager.initIndex<MovementComponent>();
+			entityManager.initIndex<ComponentA>();
 		}
 	});
 
@@ -372,7 +377,7 @@ TEST(EntityManager, TwoEntityMangersCreatedInDifferentThreads_AddAndRemoveIndexe
 		{
 			auto entityManagerData = PrepareEntityManager();
 			EntityManager& entityManager = entityManagerData->entityManager;
-			entityManager.initIndex<MovementComponent>();
+			entityManager.initIndex<ComponentA>();
 		}
 	});
 
@@ -391,18 +396,16 @@ TEST(EntityManager, EntityManagerWithIndex_RemoveEntityNotInIndex_EntityDoesNotA
 	const Entity testEntity = entityManager.addEntity();
 	const Entity testEntity2 = entityManager.addEntity();
 	{
-		TransformComponent* transform = entityManager.addComponent<TransformComponent>(testEntity2);
-		transform->pos.x = 500;
-		transform->pos.y = 600;
+		ComponentB* b = entityManager.addComponent<ComponentB>(testEntity2);
+		b->value = 500;
 	}
-	entityManager.initIndex<TransformComponent>();
+	entityManager.initIndex<ComponentB>();
 
 	entityManager.removeEntity(testEntity);
 
-	entityManager.forEachComponentSetWithEntity<const TransformComponent>([testEntity2](Entity entity, const TransformComponent* transform) {
+	entityManager.forEachComponentSetWithEntity<const ComponentB>([testEntity2](Entity entity, const ComponentB* b) {
 		EXPECT_EQ(entity, testEntity2);
-		EXPECT_EQ(transform->pos.x, 500);
-		EXPECT_EQ(transform->pos.y, 600);
+		EXPECT_EQ(b->value, 500);
 	});
 }
 
@@ -413,56 +416,77 @@ TEST(EntityManager, EntityManagerWithIndexes_RemoveFirstEntityInMultupleIndexes_
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager = entityManagerData->entityManager;
 
-	const Entity testEntity1 = entityManager.addEntity();
-	{
-		TransformComponent* transform = entityManager.addComponent<TransformComponent>(testEntity1);
-		transform->pos.x = 100;
-		transform->pos.y = 200;
-	}
-	{
-		SingleIntComponent* singleInt = entityManager.addComponent<SingleIntComponent>(testEntity1);
-		singleInt->value = 300;
-	}
-	const Entity testEntity2 = entityManager.addEntity();
-	{
-		TransformComponent* transform = entityManager.addComponent<TransformComponent>(testEntity2);
-		transform->pos.x = 400;
-		transform->pos.y = 500;
-	}
-	{
-		MovementComponent* move = entityManager.addComponent<MovementComponent>(testEntity2);
-		move->move.x = 600;
-		move->move.y = 700;
-	}
-	entityManager.initIndex<TransformComponent>();
-	entityManager.initIndex<MovementComponent>();
-	entityManager.initIndex<SingleIntComponent>();
+	auto [entity1, entity2, entity3] = setUpComponentPermutationsFor3Entities(entityManager);
 
-	entityManager.removeEntity(testEntity1);
+	entityManager.removeEntity(entity1);
 
-	entityManager.forEachComponentSetWithEntity<const TransformComponent>([testEntity2](Entity entity, const TransformComponent* transform) {
-		EXPECT_EQ(entity, testEntity2);
-		EXPECT_EQ(transform->pos.x, 400);
-		EXPECT_EQ(transform->pos.y, 500);
-	});
-	entityManager.forEachComponentSetWithEntity<const MovementComponent>([testEntity2](Entity entity, const MovementComponent* move) {
-		EXPECT_EQ(entity, testEntity2);
-		EXPECT_EQ(move->move.x, 600);
-		EXPECT_EQ(move->move.y, 700);
-	});
-	entityManager.forEachComponentSetWithEntity<const SingleIntComponent>([](Entity, const SingleIntComponent*) {
-		FAIL();
-	});
+	checkComponentEntities<ComponentA>(entityManager, {});
+	checkComponentEntities<ComponentB>(entityManager, {{entity2, 20}});
+	checkComponentEntities<ComponentC>(entityManager, {{entity2, 30}});
+	checkComponentEntities<ComponentD>(entityManager, {{entity3, 400}});
+	checkComponentEntities<ComponentE>(entityManager, {{entity3, 500}});
+	checkComponentEntities<ComponentF>(entityManager, {{entity2, 60}, {entity3, 600}});
+	checkComponentEntities<ComponentG>(entityManager, {{entity2, 70}, {entity3, 700}});
+	checkComponentEntities<ComponentH>(entityManager, {});
 
-	entityManager.removeComponent<TransformComponent>(testEntity2);
-	entityManager.removeComponent<MovementComponent>(testEntity2);
+	Entity entity4 = entityManager.addEntity();
+	entityManager.addComponent<ComponentA>(entity4)->value = 10000;
+	entityManager.addComponent<ComponentB>(entity4)->value = 20000;
+	entityManager.addComponent<ComponentC>(entity4)->value = 30000;
+	entityManager.addComponent<ComponentD>(entity4)->value = 40000;
+	entityManager.addComponent<ComponentE>(entity4)->value = 50000;
+	entityManager.addComponent<ComponentF>(entity4)->value = 60000;
+	entityManager.addComponent<ComponentG>(entity4)->value = 70000;
+	entityManager.addComponent<ComponentH>(entity4)->value = 80000;
 
-	entityManager.forEachComponentSetWithEntity<const TransformComponent>([](Entity, const TransformComponent*) {
-		FAIL();
-	});
-	entityManager.forEachComponentSetWithEntity<const MovementComponent>([](Entity, const MovementComponent*) {
-		FAIL();
-	});
+	checkComponentEntities<ComponentA>(entityManager, {{entity4, 10000}});
+	checkComponentEntities<ComponentB>(entityManager, {{entity2, 20}, {entity4, 20000}});
+	checkComponentEntities<ComponentC>(entityManager, {{entity2, 30}, {entity4, 30000}});
+	checkComponentEntities<ComponentD>(entityManager, {{entity3, 400}, {entity4, 40000}});
+	checkComponentEntities<ComponentE>(entityManager, {{entity3, 500}, {entity4, 50000}});
+	checkComponentEntities<ComponentF>(entityManager, {{entity2, 60}, {entity3, 600}, {entity4, 60000}});
+	checkComponentEntities<ComponentG>(entityManager, {{entity2, 70}, {entity3, 700}, {entity4, 70000}});
+	checkComponentEntities<ComponentH>(entityManager, {{entity4, 80000}});
+}
+
+TEST(EntityManager, EntityManagerWithIndexes_RemoveMiddleEntityInMultupleIndexes_IndexesAreNotCorrupted)
+{
+	using namespace TestEntityManager_Indexes_Internal;
+
+	auto entityManagerData = PrepareEntityManager();
+	EntityManager& entityManager = entityManagerData->entityManager;
+
+	auto [entity1, entity2, entity3] = setUpComponentPermutationsFor3Entities(entityManager);
+
+	entityManager.removeEntity(entity2);
+
+	checkComponentEntities<ComponentA>(entityManager, {{entity1, 1}});
+	checkComponentEntities<ComponentB>(entityManager, {});
+	checkComponentEntities<ComponentC>(entityManager, {{entity1, 3}});
+	checkComponentEntities<ComponentD>(entityManager, {{entity3, 400}});
+	checkComponentEntities<ComponentE>(entityManager, {{entity1, 5}, {entity3, 500}});
+	checkComponentEntities<ComponentF>(entityManager, {{entity3, 600}});
+	checkComponentEntities<ComponentG>(entityManager, {{entity1, 7}, {entity3, 700}});
+	checkComponentEntities<ComponentH>(entityManager, {});
+
+	Entity entity4 = entityManager.addEntity();
+	entityManager.addComponent<ComponentA>(entity4)->value = 10000;
+	entityManager.addComponent<ComponentB>(entity4)->value = 20000;
+	entityManager.addComponent<ComponentC>(entity4)->value = 30000;
+	entityManager.addComponent<ComponentD>(entity4)->value = 40000;
+	entityManager.addComponent<ComponentE>(entity4)->value = 50000;
+	entityManager.addComponent<ComponentF>(entity4)->value = 60000;
+	entityManager.addComponent<ComponentG>(entity4)->value = 70000;
+	entityManager.addComponent<ComponentH>(entity4)->value = 80000;
+
+	checkComponentEntities<ComponentA>(entityManager, {{entity1, 1}, {entity4, 10000}});
+	checkComponentEntities<ComponentB>(entityManager, {{entity4, 20000}});
+	checkComponentEntities<ComponentC>(entityManager, {{entity1, 3}, {entity4, 30000}});
+	checkComponentEntities<ComponentD>(entityManager, {{entity3, 400}, {entity4, 40000}});
+	checkComponentEntities<ComponentE>(entityManager, {{entity1, 5}, {entity3, 500}, {entity4, 50000}});
+	checkComponentEntities<ComponentF>(entityManager, {{entity3, 600}, {entity4, 60000}});
+	checkComponentEntities<ComponentG>(entityManager, {{entity1, 7}, {entity3, 700}, {entity4, 70000}});
+	checkComponentEntities<ComponentH>(entityManager, {{entity4, 80000}});
 }
 
 TEST(EntityManager, EntityManagerWithIndexes_RemoveLastEntityInMultupleIndexes_IndexesAreNotCorrupted)
@@ -472,55 +496,37 @@ TEST(EntityManager, EntityManagerWithIndexes_RemoveLastEntityInMultupleIndexes_I
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager = entityManagerData->entityManager;
 
-	const Entity testEntity1 = entityManager.addEntity();
-	{
-		TransformComponent* transform = entityManager.addComponent<TransformComponent>(testEntity1);
-		transform->pos.x = 100;
-		transform->pos.y = 200;
-	}
-	{
-		SingleIntComponent* singleInt = entityManager.addComponent<SingleIntComponent>(testEntity1);
-		singleInt->value = 300;
-	}
-	const Entity testEntity2 = entityManager.addEntity();
-	{
-		TransformComponent* transform = entityManager.addComponent<TransformComponent>(testEntity2);
-		transform->pos.x = 400;
-		transform->pos.y = 500;
-	}
-	{
-		MovementComponent* move = entityManager.addComponent<MovementComponent>(testEntity2);
-		move->move.x = 600;
-		move->move.y = 700;
-	}
-	entityManager.initIndex<TransformComponent>();
-	entityManager.initIndex<MovementComponent>();
-	entityManager.initIndex<SingleIntComponent>();
+	auto [entity1, entity2, entity3] = setUpComponentPermutationsFor3Entities(entityManager);
 
-	entityManager.removeEntity(testEntity2);
+	entityManager.removeEntity(entity3);
 
-	entityManager.forEachComponentSetWithEntity<const TransformComponent>([testEntity1](Entity entity, const TransformComponent* transform) {
-		EXPECT_EQ(entity, testEntity1);
-		EXPECT_EQ(transform->pos.x, 100);
-		EXPECT_EQ(transform->pos.y, 200);
-	});
-	entityManager.forEachComponentSetWithEntity<const MovementComponent>([](Entity, const MovementComponent*) {
-		FAIL();
-	});
-	entityManager.forEachComponentSetWithEntity<const SingleIntComponent>([testEntity1](Entity entity, const SingleIntComponent* singleInt) {
-		EXPECT_EQ(entity, testEntity1);
-		EXPECT_EQ(singleInt->value, 300);
-	});
+	checkComponentEntities<ComponentA>(entityManager, {{entity1, 1}});
+	checkComponentEntities<ComponentB>(entityManager, {{entity2, 20}});
+	checkComponentEntities<ComponentC>(entityManager, {{entity1, 3}, {entity2, 30}});
+	checkComponentEntities<ComponentD>(entityManager, {});
+	checkComponentEntities<ComponentE>(entityManager, {{entity1, 5}});
+	checkComponentEntities<ComponentF>(entityManager, {{entity2, 60}});
+	checkComponentEntities<ComponentG>(entityManager, {{entity1, 7}, {entity2, 70}});
+	checkComponentEntities<ComponentH>(entityManager, {});
 
-	entityManager.removeComponent<TransformComponent>(testEntity1);
-	entityManager.removeComponent<SingleIntComponent>(testEntity1);
+	Entity entity4 = entityManager.addEntity();
+	entityManager.addComponent<ComponentA>(entity4)->value = 10000;
+	entityManager.addComponent<ComponentB>(entity4)->value = 20000;
+	entityManager.addComponent<ComponentC>(entity4)->value = 30000;
+	entityManager.addComponent<ComponentD>(entity4)->value = 40000;
+	entityManager.addComponent<ComponentE>(entity4)->value = 50000;
+	entityManager.addComponent<ComponentF>(entity4)->value = 60000;
+	entityManager.addComponent<ComponentG>(entity4)->value = 70000;
+	entityManager.addComponent<ComponentH>(entity4)->value = 80000;
 
-	entityManager.forEachComponentSetWithEntity<const TransformComponent>([](Entity, const TransformComponent*) {
-		FAIL();
-	});
-	entityManager.forEachComponentSetWithEntity<const SingleIntComponent>([](Entity, const SingleIntComponent*) {
-		FAIL();
-	});
+	checkComponentEntities<ComponentA>(entityManager, {{entity1, 1}, {entity4, 10000}});
+	checkComponentEntities<ComponentB>(entityManager, {{entity2, 20}, {entity4, 20000}});
+	checkComponentEntities<ComponentC>(entityManager, {{entity1, 3}, {entity2, 30}, {entity4, 30000}});
+	checkComponentEntities<ComponentD>(entityManager, {{entity4, 40000}});
+	checkComponentEntities<ComponentE>(entityManager, {{entity1, 5}, {entity4, 50000}});
+	checkComponentEntities<ComponentF>(entityManager, {{entity2, 60}, {entity4, 60000}});
+	checkComponentEntities<ComponentG>(entityManager, {{entity1, 7}, {entity2, 70}, {entity4, 70000}});
+	checkComponentEntities<ComponentH>(entityManager, {{entity4, 80000}});
 }
 
 TEST(EntityManager, EntityManager_TransferFirstEntityToAnotherManager_CanStillAccessEntities)
@@ -531,64 +537,58 @@ TEST(EntityManager, EntityManager_TransferFirstEntityToAnotherManager_CanStillAc
 	EntityManager& entityManager1 = entityManagerData->entityManager;
 	EntityManager entityManager2{entityManagerData->componentFactory, entityManagerData->entityGenerator};
 
-	const Entity testEntity = entityManager1.addEntity();
-	{
-		MovementComponent* move = entityManager1.addComponent<MovementComponent>(testEntity);
-		move->move.x = 100;
-		move->move.y = 200;
-	}
-	{
-		SingleIntComponent* singleInt = entityManager1.addComponent<SingleIntComponent>(testEntity);
-		singleInt->value = 300;
-	}
+	auto [entity1, entity2, entity3] = setUpComponentPermutationsFor3Entities(entityManager1);
 
-	const Entity testEntity2 = entityManager1.addEntity();
-	{
-		MovementComponent* move = entityManager1.addComponent<MovementComponent>(testEntity2);
-		move->move.x = 400;
-		move->move.y = 500;
-	}
-	{
-		TransformComponent* transform = entityManager1.addComponent<TransformComponent>(testEntity2);
-		transform->pos.x = 600;
-		transform->pos.y = 700;
-	}
+	entityManager1.transferEntityTo(entityManager2, entity1);
 
-	entityManager1.initIndex<MovementComponent>();
-	entityManager1.initIndex<TransformComponent>();
-	entityManager1.initIndex<SingleIntComponent>();
-	entityManager2.initIndex<MovementComponent>();
-	entityManager2.initIndex<TransformComponent>();
-	entityManager2.initIndex<SingleIntComponent>();
+	checkComponentEntities<ComponentA>(entityManager1, {});
+	checkComponentEntities<ComponentB>(entityManager1, {{entity2, 20}});
+	checkComponentEntities<ComponentC>(entityManager1, {{entity2, 30}});
+	checkComponentEntities<ComponentD>(entityManager1, {{entity3, 400}});
+	checkComponentEntities<ComponentE>(entityManager1, {{entity3, 500}});
+	checkComponentEntities<ComponentF>(entityManager1, {{entity2, 60}, {entity3, 600}});
+	checkComponentEntities<ComponentG>(entityManager1, {{entity2, 70}, {entity3, 700}});
+	checkComponentEntities<ComponentH>(entityManager1, {});
 
-	entityManager1.transferEntityTo(entityManager2, testEntity);
+	checkComponentEntities<ComponentA>(entityManager2, {{entity1, 1}});
+	checkComponentEntities<ComponentB>(entityManager2, {});
+	checkComponentEntities<ComponentC>(entityManager2, {{entity1, 3}});
+	checkComponentEntities<ComponentD>(entityManager2, {});
+	checkComponentEntities<ComponentE>(entityManager2, {{entity1, 5}});
+	checkComponentEntities<ComponentF>(entityManager2, {});
+	checkComponentEntities<ComponentG>(entityManager2, {{entity1, 7}});
+	checkComponentEntities<ComponentH>(entityManager2, {});
+}
 
-	entityManager1.forEachComponentSetWithEntity<const MovementComponent>([testEntity2](Entity entity, const MovementComponent* move) {
-		EXPECT_EQ(entity, testEntity2);
-		EXPECT_EQ(move->move.x, 400);
-		EXPECT_EQ(move->move.y, 500);
-	});
-	entityManager1.forEachComponentSetWithEntity<const TransformComponent>([testEntity2](Entity entity, const TransformComponent* transform) {
-		EXPECT_EQ(entity, testEntity2);
-		EXPECT_EQ(transform->pos.x, 600);
-		EXPECT_EQ(transform->pos.y, 700);
-	});
-	entityManager1.forEachComponentSetWithEntity<const SingleIntComponent>([](Entity, const SingleIntComponent*) {
-		FAIL();
-	});
+TEST(EntityManager, EntityManager_TransferMiddleEntityToAnotherManager_CanStillAccessEntities)
+{
+	using namespace TestEntityManager_Indexes_Internal;
 
-	entityManager2.forEachComponentSetWithEntity<const MovementComponent>([testEntity](Entity entity, const MovementComponent* move) {
-		EXPECT_EQ(entity, testEntity);
-		EXPECT_EQ(move->move.x, 100);
-		EXPECT_EQ(move->move.y, 200);
-	});
-	entityManager2.forEachComponentSetWithEntity<const TransformComponent>([](Entity, const TransformComponent*) {
-		FAIL();
-	});
-	entityManager2.forEachComponentSetWithEntity<const SingleIntComponent>([testEntity](Entity entity, const SingleIntComponent* singleInt) {
-		EXPECT_EQ(entity, testEntity);
-		EXPECT_EQ(singleInt->value, 300);
-	});
+	auto entityManagerData = PrepareEntityManager();
+	EntityManager& entityManager1 = entityManagerData->entityManager;
+	EntityManager entityManager2{entityManagerData->componentFactory, entityManagerData->entityGenerator};
+
+	auto [entity1, entity2, entity3] = setUpComponentPermutationsFor3Entities(entityManager1);
+
+	entityManager1.transferEntityTo(entityManager2, entity2);
+
+	checkComponentEntities<ComponentA>(entityManager1, {{entity1, 1}});
+	checkComponentEntities<ComponentB>(entityManager1, {});
+	checkComponentEntities<ComponentC>(entityManager1, {{entity1, 3}});
+	checkComponentEntities<ComponentD>(entityManager1, {{entity3, 400}});
+	checkComponentEntities<ComponentE>(entityManager1, {{entity1, 5}, {entity3, 500}});
+	checkComponentEntities<ComponentF>(entityManager1, {{entity3, 600}});
+	checkComponentEntities<ComponentG>(entityManager1, {{entity1, 7}, {entity3, 700}});
+	checkComponentEntities<ComponentH>(entityManager1, {});
+
+	checkComponentEntities<ComponentA>(entityManager2, {});
+	checkComponentEntities<ComponentB>(entityManager2, {{entity2, 20}});
+	checkComponentEntities<ComponentC>(entityManager2, {{entity2, 30}});
+	checkComponentEntities<ComponentD>(entityManager2, {});
+	checkComponentEntities<ComponentE>(entityManager2, {});
+	checkComponentEntities<ComponentF>(entityManager2, {{entity2, 60}});
+	checkComponentEntities<ComponentG>(entityManager2, {{entity2, 70}});
+	checkComponentEntities<ComponentH>(entityManager2, {});
 }
 
 TEST(EntityManager, EntityManager_TransferLastEntityToAnotherManager_CanStillAccessEntities)
@@ -599,62 +599,25 @@ TEST(EntityManager, EntityManager_TransferLastEntityToAnotherManager_CanStillAcc
 	EntityManager& entityManager1 = entityManagerData->entityManager;
 	EntityManager entityManager2{entityManagerData->componentFactory, entityManagerData->entityGenerator};
 
-	const Entity testEntity1 = entityManager1.addEntity();
-	{
-		MovementComponent* move = entityManager1.addComponent<MovementComponent>(testEntity1);
-		move->move.x = 100;
-		move->move.y = 200;
-	}
-	{
-		SingleIntComponent* singleInt = entityManager1.addComponent<SingleIntComponent>(testEntity1);
-		singleInt->value = 300;
-	}
+	auto [entity1, entity2, entity3] = setUpComponentPermutationsFor3Entities(entityManager1);
 
-	const Entity testEntity2 = entityManager1.addEntity();
-	{
-		MovementComponent* move = entityManager1.addComponent<MovementComponent>(testEntity2);
-		move->move.x = 400;
-		move->move.y = 500;
-	}
-	{
-		TransformComponent* transform = entityManager1.addComponent<TransformComponent>(testEntity2);
-		transform->pos.x = 600;
-		transform->pos.y = 700;
-	}
+	entityManager1.transferEntityTo(entityManager2, entity3);
 
-	entityManager1.initIndex<MovementComponent>();
-	entityManager1.initIndex<TransformComponent>();
-	entityManager1.initIndex<SingleIntComponent>();
-	entityManager2.initIndex<MovementComponent>();
-	entityManager2.initIndex<TransformComponent>();
-	entityManager2.initIndex<SingleIntComponent>();
+	checkComponentEntities<ComponentA>(entityManager1, {{entity1, 1}});
+	checkComponentEntities<ComponentB>(entityManager1, {{entity2, 20}});
+	checkComponentEntities<ComponentC>(entityManager1, {{entity1, 3}, {entity2, 30}});
+	checkComponentEntities<ComponentD>(entityManager1, {});
+	checkComponentEntities<ComponentE>(entityManager1, {{entity1, 5}});
+	checkComponentEntities<ComponentF>(entityManager1, {{entity2, 60}});
+	checkComponentEntities<ComponentG>(entityManager1, {{entity1, 7}, {entity2, 70}});
+	checkComponentEntities<ComponentH>(entityManager1, {});
 
-	entityManager1.transferEntityTo(entityManager2, testEntity2);
-
-	entityManager1.forEachComponentSetWithEntity<const MovementComponent>([testEntity1](Entity entity, const MovementComponent* move) {
-		EXPECT_EQ(entity, testEntity1);
-		EXPECT_EQ(move->move.x, 100);
-		EXPECT_EQ(move->move.y, 200);
-	});
-	entityManager1.forEachComponentSetWithEntity<const TransformComponent>([](Entity, const TransformComponent*) {
-		FAIL();
-	});
-	entityManager1.forEachComponentSetWithEntity<const SingleIntComponent>([testEntity1](Entity entity, const SingleIntComponent* singleInt) {
-		EXPECT_EQ(entity, testEntity1);
-		EXPECT_EQ(singleInt->value, 300);
-	});
-
-	entityManager2.forEachComponentSetWithEntity<const MovementComponent>([testEntity2](Entity entity, const MovementComponent* move) {
-		EXPECT_EQ(entity, testEntity2);
-		EXPECT_EQ(move->move.x, 400);
-		EXPECT_EQ(move->move.y, 500);
-	});
-	entityManager2.forEachComponentSetWithEntity<const TransformComponent>([testEntity2](Entity entity, const TransformComponent* transform) {
-		EXPECT_EQ(entity, testEntity2);
-		EXPECT_EQ(transform->pos.x, 600);
-		EXPECT_EQ(transform->pos.y, 700);
-	});
-	entityManager2.forEachComponentSetWithEntity<const SingleIntComponent>([](Entity, const SingleIntComponent*) {
-		FAIL();
-	});
+	checkComponentEntities<ComponentA>(entityManager2, {});
+	checkComponentEntities<ComponentB>(entityManager2, {});
+	checkComponentEntities<ComponentC>(entityManager2, {});
+	checkComponentEntities<ComponentD>(entityManager2, {{entity3, 400}});
+	checkComponentEntities<ComponentE>(entityManager2, {{entity3, 500}});
+	checkComponentEntities<ComponentF>(entityManager2, {{entity3, 600}});
+	checkComponentEntities<ComponentG>(entityManager2, {{entity3, 700}});
+	checkComponentEntities<ComponentH>(entityManager2, {});
 }

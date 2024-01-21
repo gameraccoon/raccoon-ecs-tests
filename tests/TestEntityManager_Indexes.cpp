@@ -21,7 +21,6 @@ namespace TestEntityManager_Indexes_Internal
 	};
 
 	using ComponentFactory = RaccoonEcs::ComponentFactoryImpl<ComponentType>;
-	using EntityGenerator = RaccoonEcs::IncrementalEntityGenerator;
 	using EntityManager = RaccoonEcs::EntityManagerImpl<ComponentType>;
 	using Entity = RaccoonEcs::Entity;
 	using TypedComponent = RaccoonEcs::TypedComponentImpl<ComponentType>;
@@ -85,8 +84,7 @@ namespace TestEntityManager_Indexes_Internal
 	struct EntityManagerData
 	{
 		ComponentFactory componentFactory;
-		EntityGenerator entityGenerator;
-		EntityManager entityManager{componentFactory, entityGenerator};
+		EntityManager entityManager{componentFactory};
 	};
 
 	static void RegisterComponents(ComponentFactory& inOutFactory)
@@ -325,7 +323,7 @@ TEST(EntityManager, CheckForCorruptingIndexes_RemoveEntityInIndexThenCopyEntityM
 
 	entityManager.removeEntity(testEntity1);
 
-	EntityManager entityManagerCopy(entityManagerData->componentFactory, entityManagerData->entityGenerator);
+	EntityManager entityManagerCopy(entityManagerData->componentFactory);
 	entityManagerCopy.overrideBy(entityManager);
 
 	std::vector<std::tuple<const ComponentA*>> resultComponents;
@@ -535,11 +533,11 @@ TEST(EntityManager, EntityManager_TransferFirstEntityToAnotherManager_CanStillAc
 
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager1 = entityManagerData->entityManager;
-	EntityManager entityManager2{entityManagerData->componentFactory, entityManagerData->entityGenerator};
+	EntityManager entityManager2{entityManagerData->componentFactory};
 
 	auto [entity1, entity2, entity3] = setUpComponentPermutationsFor3Entities(entityManager1);
 
-	entityManager1.transferEntityTo(entityManager2, entity1);
+	const Entity transferredEntity = entityManager1.transferEntityTo(entityManager2, entity1);
 
 	checkComponentEntities<ComponentA>(entityManager1, {});
 	checkComponentEntities<ComponentB>(entityManager1, {{entity2, 20}});
@@ -550,13 +548,13 @@ TEST(EntityManager, EntityManager_TransferFirstEntityToAnotherManager_CanStillAc
 	checkComponentEntities<ComponentG>(entityManager1, {{entity2, 70}, {entity3, 700}});
 	checkComponentEntities<ComponentH>(entityManager1, {});
 
-	checkComponentEntities<ComponentA>(entityManager2, {{entity1, 1}});
+	checkComponentEntities<ComponentA>(entityManager2, {{transferredEntity, 1}});
 	checkComponentEntities<ComponentB>(entityManager2, {});
-	checkComponentEntities<ComponentC>(entityManager2, {{entity1, 3}});
+	checkComponentEntities<ComponentC>(entityManager2, {{transferredEntity, 3}});
 	checkComponentEntities<ComponentD>(entityManager2, {});
-	checkComponentEntities<ComponentE>(entityManager2, {{entity1, 5}});
+	checkComponentEntities<ComponentE>(entityManager2, {{transferredEntity, 5}});
 	checkComponentEntities<ComponentF>(entityManager2, {});
-	checkComponentEntities<ComponentG>(entityManager2, {{entity1, 7}});
+	checkComponentEntities<ComponentG>(entityManager2, {{transferredEntity, 7}});
 	checkComponentEntities<ComponentH>(entityManager2, {});
 }
 
@@ -566,11 +564,11 @@ TEST(EntityManager, EntityManager_TransferMiddleEntityToAnotherManager_CanStillA
 
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager1 = entityManagerData->entityManager;
-	EntityManager entityManager2{entityManagerData->componentFactory, entityManagerData->entityGenerator};
+	EntityManager entityManager2{entityManagerData->componentFactory};
 
 	auto [entity1, entity2, entity3] = setUpComponentPermutationsFor3Entities(entityManager1);
 
-	entityManager1.transferEntityTo(entityManager2, entity2);
+	const Entity transferredEntity = entityManager1.transferEntityTo(entityManager2, entity2);
 
 	checkComponentEntities<ComponentA>(entityManager1, {{entity1, 1}});
 	checkComponentEntities<ComponentB>(entityManager1, {});
@@ -582,12 +580,12 @@ TEST(EntityManager, EntityManager_TransferMiddleEntityToAnotherManager_CanStillA
 	checkComponentEntities<ComponentH>(entityManager1, {});
 
 	checkComponentEntities<ComponentA>(entityManager2, {});
-	checkComponentEntities<ComponentB>(entityManager2, {{entity2, 20}});
-	checkComponentEntities<ComponentC>(entityManager2, {{entity2, 30}});
+	checkComponentEntities<ComponentB>(entityManager2, {{transferredEntity, 20}});
+	checkComponentEntities<ComponentC>(entityManager2, {{transferredEntity, 30}});
 	checkComponentEntities<ComponentD>(entityManager2, {});
 	checkComponentEntities<ComponentE>(entityManager2, {});
-	checkComponentEntities<ComponentF>(entityManager2, {{entity2, 60}});
-	checkComponentEntities<ComponentG>(entityManager2, {{entity2, 70}});
+	checkComponentEntities<ComponentF>(entityManager2, {{transferredEntity, 60}});
+	checkComponentEntities<ComponentG>(entityManager2, {{transferredEntity, 70}});
 	checkComponentEntities<ComponentH>(entityManager2, {});
 }
 
@@ -597,11 +595,11 @@ TEST(EntityManager, EntityManager_TransferLastEntityToAnotherManager_CanStillAcc
 
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager1 = entityManagerData->entityManager;
-	EntityManager entityManager2{entityManagerData->componentFactory, entityManagerData->entityGenerator};
+	EntityManager entityManager2{entityManagerData->componentFactory};
 
 	auto [entity1, entity2, entity3] = setUpComponentPermutationsFor3Entities(entityManager1);
 
-	entityManager1.transferEntityTo(entityManager2, entity3);
+	const Entity transferredEntity = entityManager1.transferEntityTo(entityManager2, entity3);
 
 	checkComponentEntities<ComponentA>(entityManager1, {{entity1, 1}});
 	checkComponentEntities<ComponentB>(entityManager1, {{entity2, 20}});
@@ -615,9 +613,9 @@ TEST(EntityManager, EntityManager_TransferLastEntityToAnotherManager_CanStillAcc
 	checkComponentEntities<ComponentA>(entityManager2, {});
 	checkComponentEntities<ComponentB>(entityManager2, {});
 	checkComponentEntities<ComponentC>(entityManager2, {});
-	checkComponentEntities<ComponentD>(entityManager2, {{entity3, 400}});
-	checkComponentEntities<ComponentE>(entityManager2, {{entity3, 500}});
-	checkComponentEntities<ComponentF>(entityManager2, {{entity3, 600}});
-	checkComponentEntities<ComponentG>(entityManager2, {{entity3, 700}});
+	checkComponentEntities<ComponentD>(entityManager2, {{transferredEntity, 400}});
+	checkComponentEntities<ComponentE>(entityManager2, {{transferredEntity, 500}});
+	checkComponentEntities<ComponentF>(entityManager2, {{transferredEntity, 600}});
+	checkComponentEntities<ComponentG>(entityManager2, {{transferredEntity, 700}});
 	checkComponentEntities<ComponentH>(entityManager2, {});
 }

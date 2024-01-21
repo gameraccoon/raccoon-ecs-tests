@@ -17,7 +17,6 @@ namespace TestEntityManager_Basic_Internal
 	};
 
 	using ComponentFactory = RaccoonEcs::ComponentFactoryImpl<ComponentType>;
-	using EntityGenerator = RaccoonEcs::IncrementalEntityGenerator;
 	using EntityManager = RaccoonEcs::EntityManagerImpl<ComponentType>;
 	using Entity = RaccoonEcs::Entity;
 	using TypedComponent = RaccoonEcs::TypedComponentImpl<ComponentType>;
@@ -110,8 +109,7 @@ namespace TestEntityManager_Basic_Internal
 	struct EntityManagerData
 	{
 		ComponentFactory componentFactory;
-		EntityGenerator entityGenerator;
-		EntityManager entityManager{componentFactory, entityGenerator};
+		EntityManager entityManager{componentFactory};
 	};
 
 	static void RegisterComponents(ComponentFactory& inOutFactory)
@@ -137,35 +135,33 @@ TEST(EntityManager, EntitiesCanBeCreatedAndRemoved)
 	auto entityManagerData = PrepareEntityManager();
 	EntityManager& entityManager = entityManagerData->entityManager;
 
-	EXPECT_FALSE(entityManager.hasAnyEntities());
+	EXPECT_FALSE(entityManager.hasAnyEntity());
 
 	const Entity testEntity1 = entityManager.addEntity();
 
-	EXPECT_TRUE(entityManager.hasAnyEntities());
+	EXPECT_TRUE(entityManager.hasAnyEntity());
 	EXPECT_TRUE(entityManager.hasEntity(testEntity1));
 
 	const Entity testEntity2 = entityManager.addEntity();
 
-	EXPECT_TRUE(entityManager.hasAnyEntities());
+	EXPECT_TRUE(entityManager.hasAnyEntity());
 	EXPECT_TRUE(entityManager.hasEntity(testEntity1));
 	EXPECT_TRUE(entityManager.hasEntity(testEntity2));
 	EXPECT_NE(testEntity1, testEntity2);
-	EXPECT_NE(testEntity1.getId(), testEntity2.getId());
 
 	entityManager.removeEntity(testEntity2);
 
-	EXPECT_TRUE(entityManager.hasAnyEntities());
+	EXPECT_TRUE(entityManager.hasAnyEntity());
 	EXPECT_TRUE(entityManager.hasEntity(testEntity1));
 	EXPECT_FALSE(entityManager.hasEntity(testEntity2));
 
 	Entity testEntity3 = entityManager.addEntity();
 
-	EXPECT_TRUE(entityManager.hasAnyEntities());
+	EXPECT_TRUE(entityManager.hasAnyEntity());
 	EXPECT_TRUE(entityManager.hasEntity(testEntity1));
 	EXPECT_FALSE(entityManager.hasEntity(testEntity2));
 	EXPECT_TRUE(entityManager.hasEntity(testEntity3));
 	EXPECT_NE(testEntity1, testEntity3);
-	EXPECT_NE(testEntity1.getId(), testEntity3.getId());
 }
 
 TEST(EntityManager, ComponentsCanBeAddedToEntities)
@@ -431,10 +427,9 @@ TEST(EntityManager, EntitiesCanBeTransferedBetweenEntityManagers)
 {
 	using namespace TestEntityManager_Basic_Internal;
 
-	EntityGenerator entityGenerator;
 	ComponentFactory componentFactory;
 	RegisterComponents(componentFactory);
-	EntityManager entityManager1(componentFactory, entityGenerator);
+	EntityManager entityManager1(componentFactory);
 
 	const Entity testEntity = entityManager1.addEntity();
 	{
@@ -443,54 +438,18 @@ TEST(EntityManager, EntitiesCanBeTransferedBetweenEntityManagers)
 		entityManager1.addComponent<MovementComponent>(testEntity);
 	}
 
-	EntityManager entityManager2(componentFactory, entityGenerator);
-	entityManager1.transferEntityTo(entityManager2, testEntity);
+	EntityManager entityManager2(componentFactory);
+	const Entity transferredEntity = entityManager1.transferEntityTo(entityManager2, testEntity);
 
 	EXPECT_FALSE(entityManager1.hasEntity(testEntity));
-	EXPECT_TRUE(entityManager2.hasEntity(testEntity));
-	EXPECT_TRUE(entityManager2.doesEntityHaveComponent<TransformComponent>(testEntity));
-	EXPECT_TRUE(entityManager2.doesEntityHaveComponent<MovementComponent>(testEntity));
-	auto [transform] = entityManager2.getEntityComponents<TransformComponent>(testEntity);
+	EXPECT_TRUE(entityManager2.hasEntity(transferredEntity));
+	EXPECT_TRUE(entityManager2.doesEntityHaveComponent<TransformComponent>(transferredEntity));
+	EXPECT_TRUE(entityManager2.doesEntityHaveComponent<MovementComponent>(transferredEntity));
+	auto [transform] = entityManager2.getEntityComponents<TransformComponent>(transferredEntity);
 	if (transform != nullptr)
 	{
 		EXPECT_EQ(TestVector2(10, 3), transform->pos);
 	}
-}
-
-TEST(EntityManager, EntityCanBeAddedInTwoSteps)
-{
-	using namespace TestEntityManager_Basic_Internal;
-
-	auto entityManagerData = PrepareEntityManager();
-	EntityManager& entityManager = entityManagerData->entityManager;
-
-	Entity testEntity = entityManager.generateNewEntityUnsafe();
-
-	auto doRedoCommand = [testEntity, &entityManager]() {
-		entityManager.addExistingEntityUnsafe(testEntity);
-		entityManager.addComponent<TransformComponent>(testEntity);
-	};
-
-	auto undoCommand = [testEntity, &entityManager]() {
-		entityManager.removeEntity(testEntity);
-	};
-
-	EXPECT_FALSE(entityManager.hasAnyEntities());
-	EXPECT_FALSE(entityManager.hasEntity(testEntity));
-
-	doRedoCommand();
-
-	EXPECT_TRUE(entityManager.hasEntity(testEntity));
-	EXPECT_TRUE(entityManager.doesEntityHaveComponent<TransformComponent>(testEntity));
-
-	undoCommand();
-
-	EXPECT_FALSE(entityManager.hasEntity(testEntity));
-
-	doRedoCommand();
-
-	EXPECT_TRUE(entityManager.hasEntity(testEntity));
-	EXPECT_TRUE(entityManager.doesEntityHaveComponent<TransformComponent>(testEntity));
 }
 
 TEST(EntityManager, MatchingEntityCountCanBeGathered)
@@ -533,7 +492,7 @@ TEST(EntityManager, EntityManagerCanBeCloned)
 	MovementComponent* movement2 = entityManager.addComponent<MovementComponent>(testEntity2);
 	movement2->move = TestVector2{70, 80};
 
-	EntityManager entityManagerCopy(entityManagerData->componentFactory, entityManagerData->entityGenerator);
+	EntityManager entityManagerCopy(entityManagerData->componentFactory);
 	entityManagerCopy.overrideBy(entityManager);
 
 	{
@@ -577,7 +536,7 @@ TEST(EntityManager, CloningEntityManagerCopiesComponentsOnlyOnce)
 	}
 
 	{
-		EntityManager newEntityManager(entityManagerData->componentFactory, entityManagerData->entityGenerator);
+		EntityManager newEntityManager(entityManagerData->componentFactory);
 		newEntityManager.overrideBy(entityManager);
 		EXPECT_EQ(destructionsCount, 0);
 		EXPECT_EQ(copiesCount, 1);
@@ -603,7 +562,7 @@ TEST(EntityManager, CloningEntityManagerKeepsOldInstanceUntouched)
 		copiedFromMovement->move.y = 200;
 	}
 
-	EntityManager newEntityManager(entityManagerData->componentFactory, entityManagerData->entityGenerator);
+	EntityManager newEntityManager(entityManagerData->componentFactory);
 
 	const Entity testEntity2 = newEntityManager.addEntity();
 	{
@@ -615,7 +574,6 @@ TEST(EntityManager, CloningEntityManagerKeepsOldInstanceUntouched)
 	newEntityManager.overrideBy(entityManager);
 
 	ASSERT_TRUE(entityManager.hasEntity(testEntity1));
-	EXPECT_FALSE(entityManager.hasEntity(testEntity2));
 
 	auto [copiedFromMovement] = entityManager.getEntityComponents<MovementComponent>(testEntity1);
 	EXPECT_EQ(copiedFromMovement->move.x, 100);
@@ -636,7 +594,7 @@ TEST(EntityManager, CloningEntityManagerOverridesPreviousEntities)
 		copiedFromMovement->move.y = 200;
 	}
 
-	EntityManager newEntityManager(entityManagerData->componentFactory, entityManagerData->entityGenerator);
+	EntityManager newEntityManager(entityManagerData->componentFactory);
 
 	const Entity testEntity2 = newEntityManager.addEntity();
 	{
@@ -648,7 +606,6 @@ TEST(EntityManager, CloningEntityManagerOverridesPreviousEntities)
 	newEntityManager.overrideBy(entityManager);
 
 	ASSERT_TRUE(newEntityManager.hasEntity(testEntity1));
-	EXPECT_FALSE(newEntityManager.hasEntity(testEntity2));
 
 	auto [newMovement] = newEntityManager.getEntityComponents<MovementComponent>(testEntity1);
 	EXPECT_EQ(newMovement->move.x, 100);
@@ -669,7 +626,7 @@ TEST(EntityManager, CloningEntityManagerOverridesPreviousIndexes)
 		copiedFromMovement->move.y = 200;
 	}
 
-	EntityManager newEntityManager(entityManagerData->componentFactory, entityManagerData->entityGenerator);
+	EntityManager newEntityManager(entityManagerData->componentFactory);
 
 	const Entity testEntity2 = newEntityManager.addEntity();
 	{
@@ -802,7 +759,7 @@ TEST(EntityManager, EntityManagerCanMoveAssigned)
 	MovementComponent* movement2 = entityManager.addComponent<MovementComponent>(testEntity2);
 	movement2->move = TestVector2{70, 80};
 
-	EntityManager entityManagerCopy(entityManagerData->componentFactory, entityManagerData->entityGenerator);
+	EntityManager entityManagerCopy(entityManagerData->componentFactory);
 	entityManagerCopy = std::move(entityManager);
 
 	{
@@ -846,7 +803,7 @@ TEST(EntityManager, MoveAssigningEntityManagerDoesNotMoveComponentsIndividually)
 	}
 
 	{
-		EntityManager newEntityManager(entityManagerData->componentFactory, entityManagerData->entityGenerator);
+		EntityManager newEntityManager(entityManagerData->componentFactory);
 		newEntityManager = std::move(entityManager);
 		EXPECT_EQ(destructionsCount, 0);
 		EXPECT_EQ(copiesCount, 0);
@@ -872,7 +829,7 @@ TEST(EntityManager, MoveAssigningEntityManagerClearsMovedFromEntity)
 		copiedFromMovement->move.y = 200;
 	}
 
-	EntityManager newEntityManager(entityManagerData->componentFactory, entityManagerData->entityGenerator);
+	EntityManager newEntityManager(entityManagerData->componentFactory);
 
 	const Entity testEntity2 = newEntityManager.addEntity();
 	{
@@ -902,7 +859,7 @@ TEST(EntityManager, MoveAssigningEntityManagerOverridesPreviousEntities)
 		copiedFromMovement->move.y = 200;
 	}
 
-	EntityManager newEntityManager(entityManagerData->componentFactory, entityManagerData->entityGenerator);
+	EntityManager newEntityManager(entityManagerData->componentFactory);
 
 	const Entity testEntity2 = newEntityManager.addEntity();
 	{
@@ -914,7 +871,6 @@ TEST(EntityManager, MoveAssigningEntityManagerOverridesPreviousEntities)
 	newEntityManager = std::move(entityManager);
 
 	ASSERT_TRUE(newEntityManager.hasEntity(testEntity1));
-	EXPECT_FALSE(newEntityManager.hasEntity(testEntity2));
 
 	auto [newMovement] = newEntityManager.getEntityComponents<MovementComponent>(testEntity1);
 	EXPECT_EQ(newMovement->move.x, 100);
@@ -935,7 +891,7 @@ TEST(EntityManager, MoveAssigningEntityManagerOverridesPreviousIndexes)
 		copiedFromMovement->move.y = 200;
 	}
 
-	EntityManager newEntityManager(entityManagerData->componentFactory, entityManagerData->entityGenerator);
+	EntityManager newEntityManager(entityManagerData->componentFactory);
 
 	const Entity testEntity2 = newEntityManager.addEntity();
 	{

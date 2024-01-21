@@ -16,7 +16,6 @@ namespace TestCombinedEntityManagerView_Internal
 	};
 
 	using ComponentFactory = RaccoonEcs::ComponentFactoryImpl<ComponentType>;
-	using EntityGenerator = RaccoonEcs::IncrementalEntityGenerator;
 	using EntityManager = RaccoonEcs::EntityManagerImpl<ComponentType>;
 	using EntityView = RaccoonEcs::EntityViewImpl<EntityManager>;
 	using Entity = RaccoonEcs::Entity;
@@ -59,9 +58,8 @@ namespace TestCombinedEntityManagerView_Internal
 	struct EntityManagerData
 	{
 		ComponentFactory componentFactory;
-		EntityGenerator entityGenerator;
-		EntityManager entityManager1{componentFactory, entityGenerator};
-		EntityManager entityManager2{componentFactory, entityGenerator};
+		EntityManager entityManager1{componentFactory};
+		EntityManager entityManager2{componentFactory};
 		int data1 = 20;
 		int data2 = 50;
 		CombinedEntityManagerView combinedEntityManager{{{entityManager1, data1}, {entityManager2, data2}}};
@@ -247,21 +245,16 @@ TEST(CombinedEntityManagerView, ComponentSetsWithEntitiesCanBeCollected)
 	{
 		std::vector<std::tuple<Entity, MovementComponent*>> components;
 		combinedEntityManager.getComponentsWithEntities<MovementComponent>(components);
-		EXPECT_EQ(static_cast<size_t>(1u), components.size());
-		if (!components.empty())
-		{
-			EXPECT_EQ(testEntity1, std::get<0>(components[0]));
-		}
+		ASSERT_EQ(static_cast<size_t>(1u), components.size());
+		EXPECT_EQ(testEntity1, std::get<0>(components[0]));
 	}
 
 	{
 		std::vector<std::tuple<Entity, TransformComponent*>> components;
 		combinedEntityManager.getComponentsWithEntities<TransformComponent>(components);
-		EXPECT_EQ(static_cast<size_t>(2u), components.size());
-		if (components.size() >= 2)
-		{
-			EXPECT_NE(std::get<0>(components[0]), std::get<0>(components[1]));
-		}
+		ASSERT_EQ(static_cast<size_t>(2u), components.size());
+		EXPECT_EQ(testEntity1, std::get<0>(components[0]));
+		EXPECT_EQ(testEntity2, std::get<0>(components[1]));
 
 		// call the second time to check that cached data is valid
 		combinedEntityManager.getComponentsWithEntities<TransformComponent>(components);
@@ -271,11 +264,8 @@ TEST(CombinedEntityManagerView, ComponentSetsWithEntitiesCanBeCollected)
 	{
 		std::vector<std::tuple<Entity, EmptyComponent*, TransformComponent*>> components;
 		combinedEntityManager.getComponentsWithEntities<EmptyComponent, TransformComponent>(components);
-		EXPECT_EQ(static_cast<size_t>(1u), components.size());
-		if (!components.empty())
-		{
-			EXPECT_EQ(testEntity2, std::get<0>(components[0]));
-		}
+		ASSERT_EQ(static_cast<size_t>(1u), components.size());
+		EXPECT_EQ(testEntity2, std::get<0>(components[0]));
 	}
 }
 

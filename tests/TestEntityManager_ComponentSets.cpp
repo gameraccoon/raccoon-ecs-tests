@@ -15,7 +15,6 @@ namespace TestEntityManager_ComponentSets_Internal
 	};
 
 	using ComponentFactory = RaccoonEcs::ComponentFactoryImpl<ComponentType>;
-	using EntityGenerator = RaccoonEcs::IncrementalEntityGenerator;
 	using EntityManager = RaccoonEcs::EntityManagerImpl<ComponentType>;
 	using Entity = RaccoonEcs::Entity;
 	using TypedComponent = RaccoonEcs::TypedComponentImpl<ComponentType>;
@@ -56,8 +55,7 @@ namespace TestEntityManager_ComponentSets_Internal
 	struct EntityManagerData
 	{
 		ComponentFactory componentFactory;
-		EntityGenerator entityGenerator;
-		EntityManager entityManager{componentFactory, entityGenerator};
+		EntityManager entityManager{componentFactory};
 	};
 
 	static void RegisterComponents(ComponentFactory& inOutFactory)
@@ -268,11 +266,10 @@ TEST(EntityManager, ComponentSetsCanBeIteratedOverWithAdditionalData)
 {
 	using namespace TestEntityManager_ComponentSets_Internal;
 
-	EntityGenerator entityGenerator;
 	ComponentFactory componentFactory;
 	RegisterComponents(componentFactory);
-	EntityManager entityManager1(componentFactory, entityGenerator);
-	EntityManager entityManager2(componentFactory, entityGenerator);
+	EntityManager entityManager1(componentFactory);
+	EntityManager entityManager2(componentFactory);
 
 	const Entity testEntity1 = entityManager1.addEntity();
 	entityManager1.addComponent<TransformComponent>(testEntity1);
@@ -297,11 +294,10 @@ TEST(EntityManager, ComponentSetsCanBeIteratedOverWithEntitiesAndAdditionalData)
 {
 	using namespace TestEntityManager_ComponentSets_Internal;
 
-	EntityGenerator entityGenerator;
 	ComponentFactory componentFactory;
 	RegisterComponents(componentFactory);
-	EntityManager entityManager1(componentFactory, entityGenerator);
-	EntityManager entityManager2(componentFactory, entityGenerator);
+	EntityManager entityManager1(componentFactory);
+	EntityManager entityManager2(componentFactory);
 
 	const Entity testEntity1 = entityManager1.addEntity();
 	entityManager1.addComponent<TransformComponent>(testEntity1);
@@ -326,11 +322,10 @@ TEST(EntityManager, ComponentSetsWithAdditionalDataCanBeCollected)
 {
 	using namespace TestEntityManager_ComponentSets_Internal;
 
-	EntityGenerator entityGenerator;
 	ComponentFactory componentFactory;
 	RegisterComponents(componentFactory);
-	EntityManager entityManager1(componentFactory, entityGenerator);
-	EntityManager entityManager2(componentFactory, entityGenerator);
+	EntityManager entityManager1(componentFactory);
+	EntityManager entityManager2(componentFactory);
 
 	const Entity testEntity1 = entityManager1.addEntity();
 	entityManager1.addComponent<TransformComponent>(testEntity1);
@@ -365,11 +360,10 @@ TEST(EntityManager, ComponentSetsWithEntitiesAndAdditionalDataCanBeCollected)
 {
 	using namespace TestEntityManager_ComponentSets_Internal;
 
-	EntityGenerator entityGenerator;
 	ComponentFactory componentFactory;
 	RegisterComponents(componentFactory);
-	EntityManager entityManager1(componentFactory, entityGenerator);
-	EntityManager entityManager2(componentFactory, entityGenerator);
+	EntityManager entityManager1(componentFactory);
+	EntityManager entityManager2(componentFactory);
 
 	const Entity testEntity1 = entityManager1.addEntity();
 	entityManager1.addComponent<TransformComponent>(testEntity1);

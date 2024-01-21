@@ -59,7 +59,6 @@ namespace TestComponentIdTypes_Internal
 		static EnumComponentId GetTypeId() { return EnumComponentId::ComponentWithEnumId; };
 	};
 
-	using EntityGenerator = RaccoonEcs::IncrementalEntityGenerator;
 	using Entity = RaccoonEcs::Entity;
 }
 
@@ -83,8 +82,7 @@ TEST(ComponentIdTypes, EntityManagerWithStringComponentIdTypes_TryToCreateAndUse
 
 	ComponentFactory componentFactory;
 	componentFactory.registerComponent<ComponentWithStringId>();
-	EntityGenerator entityGenerator;
-	EntityManager entityManager(componentFactory, entityGenerator);
+	EntityManager entityManager(componentFactory);
 
 	const Entity testEntity = entityManager.addEntity();
 	entityManager.addComponent<ComponentWithStringId>(testEntity);
@@ -115,8 +113,7 @@ TEST(ComponentIdTypes, EntityManagerWithConstCharComponentIdTypes_TryToCreateAnd
 
 	ComponentFactory componentFactory;
 	componentFactory.registerComponent<ComponentWithConstCharId>();
-	EntityGenerator entityGenerator;
-	EntityManager entityManager(componentFactory, entityGenerator);
+	EntityManager entityManager(componentFactory);
 
 	const Entity testEntity = entityManager.addEntity();
 	entityManager.addComponent<ComponentWithConstCharId>(testEntity);
@@ -147,8 +144,7 @@ TEST(ComponentIdTypes, EntityManagerWithCustomStringComponentIdTypes_TryToCreate
 
 	ComponentFactory componentFactory;
 	componentFactory.registerComponent<ComponentWithCustomStringId>();
-	EntityGenerator entityGenerator;
-	EntityManager entityManager(componentFactory, entityGenerator);
+	EntityManager entityManager(componentFactory);
 
 	const Entity testEntity = entityManager.addEntity();
 	entityManager.addComponent<ComponentWithCustomStringId>(testEntity);
@@ -179,8 +175,7 @@ TEST(ComponentIdTypes, EntityManagerWithIntegerComponentIdTypes_TryToCreateAndUs
 
 	ComponentFactory componentFactory;
 	componentFactory.registerComponent<ComponentWithIntegerId>();
-	EntityGenerator entityGenerator;
-	EntityManager entityManager(componentFactory, entityGenerator);
+	EntityManager entityManager(componentFactory);
 
 	const Entity testEntity = entityManager.addEntity();
 	entityManager.addComponent<ComponentWithIntegerId>(testEntity);
@@ -211,8 +206,7 @@ TEST(ComponentIdTypes, EntityManagerWithEnumComponentIdTypes_TryToCreateAndUse_C
 
 	ComponentFactory componentFactory;
 	componentFactory.registerComponent<ComponentWithEnumId>();
-	EntityGenerator entityGenerator;
-	EntityManager entityManager(componentFactory, entityGenerator);
+	EntityManager entityManager(componentFactory);
 
 	const Entity testEntity = entityManager.addEntity();
 	entityManager.addComponent<ComponentWithEnumId>(testEntity);

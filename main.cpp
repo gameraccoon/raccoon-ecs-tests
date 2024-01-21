@@ -32,7 +32,9 @@ class TestInfoLogger : public EmptyTestEventListener
 
 void SGTestingEnvironment::SetUp()
 {
-	RaccoonEcs::gErrorHandler = [](const std::string& error){ std::cerr << error << std::endl; GTEST_FAIL(); };
+	RaccoonEcs::gErrorHandler = [](const std::string& error){
+		std::cerr << error << std::endl; GTEST_FAIL();
+	};
 }
 
 void SGTestingEnvironment::TearDown()
